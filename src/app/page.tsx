@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { db } from "@/lib/prisma";
 import { findUpcomingJubilees, isBirthday, parseJubileeYears, type EmployeeLike } from "@/lib/jubilee";
