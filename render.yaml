@@ -45,5 +45,5 @@ services:
 
 databases:
   - name: employee-anniversaries-db
-    plan: starter
+    plan: free
     region: frankfurt
