@@ -33,6 +33,22 @@ services:
           type: web
           property: url
 
+  - type: cron
+    name: employee-anniversaries-daily-cron
+    schedule: "0 8 * * *" # daily at 08:00
+    runtime: image
+    plan: starter
+    region: frankfurt
+    image:
+      url: curlimages/curl:8.6.0
+    startCommand: bash -lc "curl -sSf \"$WEB_URL/api/schedule/run-daily\" || true"
+    envVars:
+      - key: WEB_URL
+        fromService:
+          name: employee-anniversaries-web
+          type: web
+          property: url
+
 databases:
   - name: employee-anniversaries-db
     plan: starter
