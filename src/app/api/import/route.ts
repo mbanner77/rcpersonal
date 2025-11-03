@@ -58,11 +58,7 @@ function parseDateFlexible(input: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function pick<T>(obj: T, keys: (keyof T)[]): Partial<T> {
-  const out: Partial<T> = {};
-  for (const k of keys) if (obj[k] !== undefined) out[k] = obj[k];
-  return out;
-}
+// pick helper removed; build creates fully-typed Prisma inputs directly
 
 function parseRow(obj: Record<string, unknown>): ParsedRow {
   const map: Record<string, string> = {};
@@ -138,16 +134,13 @@ export async function POST(req: NextRequest) {
       if (!existing) {
         const autoEmail = email ?? buildEmail(firstName, lastName) ?? undefined;
         await db.employee.create({
-          data: pick(
-            {
-              firstName,
-              lastName,
-              startDate: startDate ?? new Date(),
-              birthDate,
-              email: autoEmail,
-            },
-            ["firstName", "lastName", "startDate", "birthDate", "email"]
-          ),
+          data: {
+            firstName: firstName!,
+            lastName: lastName!,
+            startDate: (startDate ?? new Date()),
+            birthDate: birthDate!,
+            ...(autoEmail !== undefined ? { email: autoEmail } : {}),
+          },
         });
         created++;
         continue;
