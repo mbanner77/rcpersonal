@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { db } from "@/lib/prisma";
@@ -105,88 +106,110 @@ export async function POST(req: NextRequest) {
     if (!file || !(file instanceof File)) {
       return Response.json({ error: "file is required" }, { status: 400 });
     }
+    const maxBytes = 8 * 1024 * 1024; // 8 MB
+    if (typeof file.size === "number" && file.size > maxBytes) {
+      return Response.json({ error: `Datei ist zu groß (>${Math.floor(maxBytes/1024/1024)}MB). Bitte Datei aufteilen.` }, { status: 413 });
+    }
     const buf = Buffer.from(await file.arrayBuffer());
 
     const wb = XLSX.read(buf, { type: "buffer" });
     const ws = wb.Sheets[wb.SheetNames[0]];
     if (!ws) return Response.json({ error: "No sheet found" }, { status: 400 });
-    const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, {
-      raw: false,
-      defval: null,
-    });
+    const ref = ws["!ref"];
+    if (!ref) return Response.json({ error: "Sheet has no data" }, { status: 400 });
+    const range = XLSX.utils.decode_range(ref);
+    const headerRow = range.s.r; // assume first row is header
+    const totalRows = range.e.r - headerRow; // data rows (excluding header)
+    const maxRows = 5000;
+    if (totalRows > maxRows) {
+      return Response.json({ error: `Zu viele Zeilen (${totalRows}). Maximal ${maxRows} Zeilen pro Upload, bitte Datei aufteilen.` }, { status: 400 });
+    }
 
     let created = 0;
     let updated = 0;
     let skippedLocked = 0;
 
-    for (const r of rows) {
-      const parsed = parseRow(r);
-      const { firstName, lastName, startDate, birthDate, email } = parsed;
-      if (!firstName || !lastName || !birthDate) {
-        continue; // insufficient data
-      }
-
-      // find existing by natural unique
-      const existing = await db.employee.findUnique({
-        where: { firstName_lastName_birthDate: { firstName, lastName, birthDate } },
+    const batchSize = 300; // process in small chunks to reduce memory
+    for (let offset = 0; offset < totalRows; offset += batchSize) {
+      const endOffset = Math.min(offset + batchSize - 1, totalRows - 1);
+      const batchRange = {
+        s: { r: headerRow, c: range.s.c }, // include header in each batch so keys are preserved
+        e: { r: headerRow + 1 + endOffset, c: range.e.c },
+      };
+      const batchRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, {
+        raw: false,
+        defval: null,
+        range: batchRange,
       });
 
-      if (!existing) {
-        const autoEmail = email ?? buildEmail(firstName, lastName) ?? undefined;
-        await db.employee.create({
-          data: {
-            firstName: firstName!,
-            lastName: lastName!,
-            startDate: (startDate ?? new Date()),
-            birthDate: birthDate!,
-            ...(autoEmail !== undefined ? { email: autoEmail } : {}),
-          },
-        });
-        created++;
-        continue;
-      }
-
-      if (existing.lockAll) {
-        skippedLocked++;
-        continue;
-      }
-
-      const updateData: Partial<{
-        firstName: string;
-        lastName: string;
-        startDate: Date;
-        birthDate: Date;
-        email: string | null;
-      }> = {};
-      if (!existing.lockFirstName && firstName && existing.firstName !== firstName) {
-        updateData.firstName = firstName;
-      }
-      if (!existing.lockLastName && lastName && existing.lastName !== lastName) {
-        updateData.lastName = lastName;
-      }
-      if (!existing.lockStartDate && startDate && existing.startDate.getTime() !== startDate.getTime()) {
-        updateData.startDate = startDate;
-      }
-      if (!existing.lockBirthDate && birthDate && existing.birthDate.getTime() !== birthDate.getTime()) {
-        updateData.birthDate = birthDate;
-      }
-      if (!existing.lockEmail) {
-        if (email != null && email !== existing.email) {
-          updateData.email = email;
-        } else if (!existing.email) {
-          const auto = buildEmail(firstName, lastName);
-          if (auto && auto !== existing.email) updateData.email = auto;
+      for (const r of batchRows) {
+        const parsed = parseRow(r);
+        const { firstName, lastName, startDate, birthDate, email } = parsed;
+        if (!firstName || !lastName || !birthDate) {
+          continue; // insufficient data
         }
-      }
 
-      if (Object.keys(updateData).length > 0) {
-        await db.employee.update({
-          where: { id: existing.id },
-          data: updateData,
+        const existing = await db.employee.findUnique({
+          where: { firstName_lastName_birthDate: { firstName, lastName, birthDate } },
         });
-        updated++;
-      } else {
-        skippedLocked++;
+
+        if (!existing) {
+          const autoEmail = email ?? buildEmail(firstName, lastName) ?? undefined;
+          await db.employee.create({
+            data: {
+              firstName: firstName!,
+              lastName: lastName!,
+              startDate: (startDate ?? new Date()),
+              birthDate: birthDate!,
+              ...(autoEmail !== undefined ? { email: autoEmail } : {}),
+            },
+          });
+          created++;
+          continue;
+        }
+
+        if (existing.lockAll) {
+          skippedLocked++;
+          continue;
+        }
+
+        const updateData: Partial<{
+          firstName: string;
+          lastName: string;
+          startDate: Date;
+          birthDate: Date;
+          email: string | null;
+        }> = {};
+        if (!existing.lockFirstName && firstName && existing.firstName !== firstName) {
+          updateData.firstName = firstName;
+        }
+        if (!existing.lockLastName && lastName && existing.lastName !== lastName) {
+          updateData.lastName = lastName;
+        }
+        if (!existing.lockStartDate && startDate && existing.startDate.getTime() !== startDate.getTime()) {
+          updateData.startDate = startDate;
+        }
+        if (!existing.lockBirthDate && birthDate && existing.birthDate.getTime() !== birthDate.getTime()) {
+          updateData.birthDate = birthDate;
+        }
+        if (!existing.lockEmail) {
+          if (email != null && email !== existing.email) {
+            updateData.email = email;
+          } else if (!existing.email) {
+            const auto = buildEmail(firstName, lastName);
+            if (auto && auto !== existing.email) updateData.email = auto;
+          }
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await db.employee.update({
+            where: { id: existing.id },
+            data: updateData,
+          });
+          updated++;
+        } else {
+          skippedLocked++;
+        }
       }
     }
 

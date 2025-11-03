@@ -4,6 +4,7 @@ import "./globals.css";
 import Link from "next/link";
 import "@/lib/dev-cron";
 import ThemeToggle from "@/components/ThemeToggle";
+import LogoutButton from "@/components/LogoutButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({
               <Link className="hover:underline" href="/employees">Employees</Link>
               <Link className="hover:underline" href="/settings">Settings</Link>
               <ThemeToggle />
+              <LogoutButton />
             </div>
           </nav>
         </header>
