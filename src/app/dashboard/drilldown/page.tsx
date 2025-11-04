@@ -80,7 +80,7 @@ export default async function DrilldownPage({ searchParams }: { searchParams: Se
         {month !== null && <span className="rounded-full border px-2 py-0.5">Monat: {month + 1}</span>}
         {quarter !== null && <span className="rounded-full border px-2 py-0.5">Quartal: {quarter + 1}</span>}
       </div>
-      <DrilldownClient initialRows={rows} />
+      <DrilldownClient initialRows={rows} initialMonth={month} />
     </div>
   );
 }

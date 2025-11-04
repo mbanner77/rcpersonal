@@ -4,18 +4,23 @@ import { useMemo, useState } from "react";
 
 type Row = { id: string; name: string; email: string; date: string };
 
-export default function DrilldownClient({ initialRows }: { initialRows: Row[] }) {
+const monthLabels = ["Jan","Feb","Mrz","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+
+export default function DrilldownClient({ initialRows, initialMonth = null }: { initialRows: Row[]; initialMonth?: number | null }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [month, setMonth] = useState<number | null>(initialMonth ?? null);
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return initialRows;
-    return initialRows.filter((r) =>
-      r.name.toLowerCase().includes(query) || r.email.toLowerCase().includes(query)
-    );
-  }, [initialRows, q]);
+    let out = initialRows;
+    if (month !== null) {
+      out = out.filter((r) => new Date(r.date).getMonth() === month);
+    }
+    if (!query) return out;
+    return out.filter((r) => r.name.toLowerCase().includes(query) || r.email.toLowerCase().includes(query));
+  }, [initialRows, q, month]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const start = (page - 1) * pageSize;
@@ -23,6 +28,12 @@ export default function DrilldownClient({ initialRows }: { initialRows: Row[] })
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap gap-1 text-xs">
+        <button onClick={() => { setMonth(null); setPage(1); }} className={`border rounded px-2 py-1 ${month === null ? "bg-black text-white" : ""}`}>Alle</button>
+        {monthLabels.map((ml, i) => (
+          <button key={ml} onClick={() => { setMonth(i); setPage(1); }} className={`border rounded px-2 py-1 ${month === i ? "bg-black text-white" : ""}`}>{ml}</button>
+        ))}
+      </div>
       <div className="flex items-center gap-2">
         <input
           value={q}
