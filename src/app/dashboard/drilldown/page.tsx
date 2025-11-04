@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/prisma";
 import DrilldownChooser from "./DrilldownChooser";
 import DrilldownHeader from "./DrilldownHeader";
@@ -15,9 +14,6 @@ type SearchParams = {
 };
 
 export default async function DrilldownPage({ searchParams }: { searchParams: SearchParams }) {
-  const rawKind = (Array.isArray(searchParams.kind) ? searchParams.kind[0] : searchParams.kind ?? "").toString().toLowerCase();
-  type Kind = "birthdays" | "hires" | "jubilees";
-  const kind: Kind = rawKind === "hires" ? "hires" : rawKind === "jubilees" ? "jubilees" : "birthdays";
   const rawYear = Array.isArray(searchParams.year) ? searchParams.year[0] : searchParams.year;
   const year = Number(rawYear ?? new Date().getFullYear()) || new Date().getFullYear();
   const rawMonth = Array.isArray(searchParams.month) ? searchParams.month[0] : searchParams.month;
@@ -53,24 +49,20 @@ export default async function DrilldownPage({ searchParams }: { searchParams: Se
     return out;
   }).sort((a: { date: string; name: string }, b: { date: string; name: string }) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.name.localeCompare(b.name));
 
-  const jubileesRows = employees.flatMap((e: { id: string; firstName: string; lastName: string; email: string | null; startDate: Date; birthDate: Date }) => {
-    const out: { id: string; name: string; email: string; date: string; extra?: string }[] = [];
-    const s = new Date(e.startDate);
-    const m = s.getMonth();
-    if (month !== null && m !== month) return out;
-    if (quarter !== null && Math.floor(m / 3) !== quarter) return out;
-    const yrs = year - s.getFullYear();
-    if (yrs > 0 && years.includes(yrs)) {
-      out.push({ id: e.id, name: `${e.lastName}, ${e.firstName}`, email: e.email ?? "", date: s.toISOString(), extra: `${yrs} Jahre` });
-    }
-    return out;
-  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.name.localeCompare(b.name));
-
-  const backHref = "/dashboard";
-  const exportHref = `/api/export/dashboard?kind=${encodeURIComponent(kind)}&year=${year}` +
-    (month !== null ? `&month=${month}` : "") + (quarter !== null ? `&quarter=${quarter}` : "");
-
-  const titleKind = kind === "birthdays" ? "Geburtstagen & Jubiläen" : kind === "hires" ? "Eintritte" : "Jubiläen";
+  const jubileesRows = employees
+    .flatMap((e: { id: string; firstName: string; lastName: string; email: string | null; startDate: Date; birthDate: Date }) => {
+      const out: { id: string; name: string; email: string; date: string; extra?: string }[] = [];
+      const s = new Date(e.startDate);
+      const m = s.getMonth();
+      if (month !== null && m !== month) return out;
+      if (quarter !== null && Math.floor(m / 3) !== quarter) return out;
+      const yrs = year - s.getFullYear();
+      if (yrs > 0 && years.includes(yrs)) {
+        out.push({ id: e.id, name: `${e.lastName}, ${e.firstName}`, email: e.email ?? "", date: s.toISOString(), extra: `${yrs} Jahre` });
+      }
+      return out;
+    })
+    .sort((a: { date: string; name: string }, b: { date: string; name: string }) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.name.localeCompare(b.name));
 
   return (
     <div className="p-8 space-y-4">

@@ -2,6 +2,9 @@ export const dynamic = "force-dynamic";
 import { db } from "@/lib/prisma";
 import Controls from "./Controls";
 import { findUpcomingJubilees, parseJubileeYears, type EmployeeLike, isBirthday } from "@/lib/jubilee";
+import dynamicImport from "next/dynamic";
+
+const AiAssistant = dynamicImport(() => import("./AiAssistant"), { ssr: false, loading: () => <div className="rounded border p-4 bg-white dark:bg-zinc-900 text-sm text-zinc-600">Lade KI-Assistent…</div> });
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -71,14 +74,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     }
   }
 
-  function Chart({ data, title, kind }: { data: number[]; title: string; kind: "birthdays" | "jubilees" | "hires" }) {
+  const totals = {
+    birthdays: birthdaysPerMonth.reduce((sum, n) => sum + n, 0),
+    hires: hiresPerMonth.reduce((sum, n) => sum + n, 0),
+    jubilees: jubileesPerMonth.reduce((sum, n) => sum + n, 0),
+  };
+
+  const highlightColor = "fill-lime-500 dark:fill-lime-400";
+
+  function Chart({ data, title }: { data: number[]; title: string }) {
     const max = Math.max(1, ...data);
     const w = 560;
     const h = 140;
     const barW = w / data.length;
     return (
       <div className="rounded-lg border p-4 bg-white dark:bg-zinc-900">
-        <div className="mb-2 text-sm text-zinc-600">{title}</div>
+        <div className="mb-2 flex items-center justify-between text-sm text-zinc-600">
+          <span>{title}</span>
+          <span className="text-xs text-zinc-500">Gesamt: {data.reduce((sum, n) => sum + n, 0)}</span>
+        </div>
         <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
           {data.map((v, i) => {
             const bh = Math.round((v / max) * (h - 24));
@@ -86,13 +100,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
             const y = h - 6 - bh;
             return (
               <g key={i}>
-                <rect x={x} y={y} width={barW - 12} height={bh} rx={3} className="fill-zinc-800 dark:fill-zinc-200" />
+                <rect
+                  x={x}
+                  y={y}
+                  width={barW - 12}
+                  height={bh}
+                  rx={3}
+                  className={`fill-zinc-800 dark:fill-zinc-200 ${v === max && max > 0 ? highlightColor : ""}`}
+                >
+                  <title>{monthLabels[i]}: {v}</title>
+                </rect>
+                <text x={x + (barW - 12) / 2} y={y - 4} textAnchor="middle" fontSize="10" className="fill-zinc-500">{v}</text>
                 <text x={x + (barW - 12) / 2} y={h - 8} textAnchor="middle" fontSize="10" className="fill-zinc-600">{monthLabels[i]}</text>
               </g>
             );
           })}
         </svg>
-        <div className="mt-2 text-xs text-zinc-600">Max: {max}</div>
       </div>
     );
   }
@@ -102,76 +125,80 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <Controls years={[currYear - 1, currYear, currYear + 1]} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-lg border p-4 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">Jubiläen (7 Tage)</div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="rounded-lg border p-4 bg-white dark:bg-zinc-900 space-y-1">
+          <div className="text-sm text-zinc-500">Jubiläen (nächste 7 Tage)</div>
           <div className="text-3xl font-semibold">{hits7.length}</div>
+          <p className="text-xs text-zinc-500">{hits7.slice(0, 3).map((h) => `${h.employee.firstName} ${h.employee.lastName} (${h.years}J)`).join(", ") || "Keine."}</p>
         </div>
-        <div className="rounded-lg border p-4 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">Jubiläen ({windowDays} Tage)</div>
+        <div className="rounded-lg border p-4 bg-white dark:bg-zinc-900 space-y-1">
+          <div className="text-sm text-zinc-500">Jubiläen (nächste {windowDays} Tage)</div>
           <div className="text-3xl font-semibold">{hitsWindow.length}</div>
+          <p className="text-xs text-zinc-500">Spitzenjahr: {order[0] ?? "–"} Jahre</p>
         </div>
-        <div className="rounded-lg border p-4 bg-white dark:bg-zinc-900">
+        <div className="rounded-lg border p-4 bg-white dark:bg-zinc-900 space-y-1">
           <div className="text-sm text-zinc-500">Geburtstage heute</div>
           <div className="text-3xl font-semibold">{birthdaysToday}</div>
+          <p className="text-xs text-zinc-500">Gesamt Geburtstage {currYear}: {totals.birthdays}</p>
         </div>
       </div>
 
-      <h2 className="text-xl font-medium">Jubiläen (nächste {windowDays} Tage)</h2>
-      {order.length === 0 ? (
-        <p className="text-zinc-600">Keine anstehenden Jubiläen.</p>
-      ) : (
-        order.map((y) => (
-          <div key={y} className="space-y-2">
-            <h2 className="text-xl font-medium">{y} Jahre</h2>
-            <ul className="divide-y border rounded bg-white dark:bg-zinc-900">
-              {grouped[y].map((h) => (
-                <li key={h.employee.id} className="p-3 flex items-center justify-between">
-                  <span>
-                    {h.employee.lastName}, {h.employee.firstName}
-                  </span>
-                  <span className="text-sm text-zinc-600">
-                    am {h.anniversaryDate.toLocaleDateString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))
-      )}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2 space-y-6">
+          <h2 className="text-xl font-medium">Jubiläen (nächste {windowDays} Tage)</h2>
+          {order.length === 0 ? (
+            <p className="text-zinc-600">Keine anstehenden Jubiläen.</p>
+          ) : (
+            order.map((y) => (
+              <div key={y} className="space-y-2">
+                <h3 className="text-lg font-medium">{y} Jahre</h3>
+                <ul className="divide-y border rounded bg-white dark:bg-zinc-900">
+                  {grouped[y].map((h) => (
+                    <li key={h.employee.id} className="p-3 flex items-center justify-between">
+                      <span>{h.employee.lastName}, {h.employee.firstName}</span>
+                      <span className="text-sm text-zinc-600">am {h.anniversaryDate.toLocaleDateString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
+        </div>
+        <AiAssistant />
+      </div>
 
       <h2 className="text-xl font-medium">Auswertungen {currYear}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Chart data={birthdaysPerMonth} title="Geburtstage pro Monat" kind="birthdays" />
+          <Chart data={birthdaysPerMonth} title="Geburtstage pro Monat" />
           <div>
             <a className="text-sm underline" href={`/dashboard/drilldown?kind=birthdays&year=${currYear}`}>Alle Details</a>
           </div>
           <div className="flex flex-wrap gap-1 text-xs text-zinc-700">
             {monthLabels.map((ml, i) => (
-              <a key={ml} href={`/dashboard/drilldown?kind=birthdays&year=${currYear}&month=${i}`} className="border rounded px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
+              <a key={ml} href={`/dashboard/drilldown?kind=birthdays&year=${currYear}&month=${i}`} className="border rounded-full px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
             ))}
           </div>
         </div>
         <div className="space-y-2">
-          <Chart data={jubileesPerMonth} title="Jubiläen pro Monat" kind="jubilees" />
+          <Chart data={jubileesPerMonth} title="Jubiläen pro Monat" />
           <div>
             <a className="text-sm underline" href={`/dashboard/drilldown?kind=jubilees&year=${currYear}`}>Alle Details</a>
           </div>
           <div className="flex flex-wrap gap-1 text-xs text-zinc-700">
             {monthLabels.map((ml, i) => (
-              <a key={ml} href={`/dashboard/drilldown?kind=jubilees&year=${currYear}&month=${i}`} className="border rounded px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
+              <a key={ml} href={`/dashboard/drilldown?kind=jubilees&year=${currYear}&month=${i}`} className="border rounded-full px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
             ))}
           </div>
         </div>
         <div className="space-y-2">
-          <Chart data={hiresPerMonth} title="Eintritte pro Monat" kind="hires" />
+          <Chart data={hiresPerMonth} title="Eintritte pro Monat" />
           <div>
             <a className="text-sm underline" href={`/dashboard/drilldown?kind=hires&year=${currYear}`}>Alle Details</a>
           </div>
           <div className="flex flex-wrap gap-1 text-xs text-zinc-700">
             {monthLabels.map((ml, i) => (
-              <a key={ml} href={`/dashboard/drilldown?kind=hires&year=${currYear}&month=${i}`} className="border rounded px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
+              <a key={ml} href={`/dashboard/drilldown?kind=hires&year=${currYear}&month=${i}`} className="border rounded-full px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
             ))}
           </div>
         </div>

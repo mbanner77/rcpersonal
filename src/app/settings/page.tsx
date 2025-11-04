@@ -17,12 +17,22 @@ type SettingsDto = {
   dailySendHour: number;
 };
 
+type TestResult = {
+  accepted?: string[];
+  rejected?: string[];
+  messageId?: string;
+  response?: string;
+  envelope?: { from?: string; to?: string[] };
+  error?: string;
+};
+
 export default function SettingsPage() {
   const [data, setData] = useState<SettingsDto | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [testTo, setTestTo] = useState("");
   const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -142,13 +152,32 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <input className="border rounded p-2 flex-1" placeholder="Empfänger" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
               <button type="button" disabled={testing} onClick={async () => {
-                setTesting(true); setMsg("");
+                setTesting(true); setMsg(""); setTestResult(null);
                 try {
                   const res = await fetch("/api/settings/test-mail", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: testTo }) });
-                  setMsg(res.ok ? "Testmail gesendet" : "Fehler beim Senden");
+                  const json = await res.json().catch(() => null);
+                  if (res.ok) {
+                    setMsg("Testmail gesendet");
+                    setTestResult(json ?? null);
+                  } else {
+                    setMsg(json?.error || "Fehler beim Senden");
+                    setTestResult(json ?? { error: json?.error });
+                  }
                 } finally { setTesting(false); }
               }} className="rounded border px-3 py-2">{testing ? "Sende…" : "Testmail senden"}</button>
             </div>
+            {testResult && (
+              <div className="mt-3 text-xs bg-zinc-50 dark:bg-zinc-900 border rounded p-3 space-y-1">
+                {testResult.error && <p className="text-red-600">Fehler: {testResult.error}</p>}
+                {testResult.accepted && <p>Accepted: {testResult.accepted.join(", ") || "–"}</p>}
+                {testResult.rejected && testResult.rejected.length > 0 && <p className="text-red-500">Rejected: {testResult.rejected.join(", ")}</p>}
+                {testResult.messageId && <p>Message ID: {testResult.messageId}</p>}
+                {testResult.response && <p>SMTP Antwort: {testResult.response}</p>}
+                {testResult.envelope && (
+                  <p>Envelope: From {testResult.envelope.from ?? "?"} → {(testResult.envelope.to ?? []).join(", ") || "?"}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <button disabled={saving} className="rounded bg-black text-white px-4 py-2 disabled:opacity-50">

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
+    "@xenova/transformers": "^2.6.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "next": "16.0.1",

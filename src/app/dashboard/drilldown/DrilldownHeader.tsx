@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function DrilldownHeader({ year, month, quarter }: { year: number; month: number | null; quarter: number | null }) {
   const sp = useSearchParams();
-  const pathname = usePathname();
   const rawKind = (sp.get("kind") || "birthdays").toLowerCase();
   const kind: "birthdays" | "hires" | "jubilees" = rawKind === "hires" ? "hires" : rawKind === "jubilees" ? "jubilees" : "birthdays";
 
