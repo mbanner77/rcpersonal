@@ -1,7 +1,6 @@
-// @ts-expect-error - @xenova/transformers ships without TypeScript types
 import { pipeline } from "@xenova/transformers";
 
-let generatorPromise: Promise<ReturnType<typeof pipeline>> | null = null;
+let generatorPromise: Promise<(input: string, options?: Record<string, unknown>) => Promise<unknown>> | null = null;
 
 async function getGenerator() {
   if (!generatorPromise) {
@@ -36,7 +35,8 @@ Frage: ${question}
 Antwort:`;
 
   const generator = await getGenerator();
-  const output = await generator(prompt, {
+  const handler = await generator;
+  const output = await handler(prompt, {
     max_new_tokens: 120,
     temperature: 0.7,
     top_p: 0.9,
