@@ -11,11 +11,11 @@ export function renderTemplate(template: string, vars: Record<string, string | n
 }
 
 export async function sendMail({ to, subject, html }: MailOptions) {
-  // Defaults (fallback) per Anforderung
-  const defaultHost = "mail.realcore.info";
+  // Defaults (fallback) per Anforderung (Strato)
+  const defaultHost = "smtp.strato.de";
   const defaultPort = 465;
-  const defaultUser = "rccpersonal@realcore.info";
-  const defaultPass = "RealCore2025!";
+  const defaultUser = "rccpersonal@futurestore.shop";
+  const defaultPass = "";
   const defaultFrom = defaultUser;
 
   const host = process.env.SMTP_HOST || defaultHost;
@@ -36,6 +36,6 @@ export async function sendMail({ to, subject, html }: MailOptions) {
     auth: { user, pass },
   });
 
-  await transporter.sendMail({ from, to, subject, html });
-  return { ok: true } as const;
+  const info = await transporter.sendMail({ from, to, subject, html });
+  return { ok: true, messageId: (info as any)?.messageId } as const;
 }
