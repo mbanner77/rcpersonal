@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/prisma";
 import DrilldownClient from "./DrilldownClient";
+import KindSwitcher from "./KindSwitcher";
 import { parseJubileeYears } from "@/lib/jubilee";
 
 export const dynamic = "force-dynamic";
@@ -14,14 +15,12 @@ type SearchParams = {
 
 export default async function DrilldownPage({ searchParams }: { searchParams: SearchParams }) {
   const rawKind = (searchParams.kind ?? "").toString().toLowerCase();
-  const allowedKinds = ["birthdays", "hires", "jubilees"] as const;
-  type Kind = typeof allowedKinds[number];
-  const kind: Kind = allowedKinds.includes(rawKind as Kind) ? (rawKind as Kind) : "birthdays";
+  type Kind = "birthdays" | "hires" | "jubilees";
+  const kind: Kind = rawKind === "hires" ? "hires" : rawKind === "jubilees" ? "jubilees" : "birthdays";
   const year = Number(searchParams.year ?? new Date().getFullYear()) || new Date().getFullYear();
-  const m = searchParams.month !== undefined ? Math.max(0, Math.min(11, Number(searchParams.month))) : null;
+  const month = searchParams.month !== undefined ? Math.max(0, Math.min(11, Number(searchParams.month))) : null;
   const q = searchParams.quarter !== undefined ? Math.max(0, Math.min(3, Number(searchParams.quarter))) : null;
-  const month = Number.isFinite(m as number) ? (m as number) : null;
-  const quarter = Number.isFinite(q as number) ? (q as number) : null;
+  const quarter = q;
 
   const [setting, employees] = await Promise.all([
     db.setting.findUnique({ where: { id: 1 } }),
@@ -80,6 +79,7 @@ export default async function DrilldownPage({ searchParams }: { searchParams: Se
         {month !== null && <span className="rounded-full border px-2 py-0.5">Monat: {month + 1}</span>}
         {quarter !== null && <span className="rounded-full border px-2 py-0.5">Quartal: {quarter + 1}</span>}
       </div>
+      <KindSwitcher />
       <DrilldownClient initialRows={rows} initialMonth={month} />
     </div>
   );
