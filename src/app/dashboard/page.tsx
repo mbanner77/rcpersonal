@@ -85,12 +85,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
             const x = i * barW + 6;
             const y = h - 6 - bh;
             return (
-              <a key={i} href={`/dashboard/drilldown?kind=${kind}&year=${currYear}&month=${i}`}>
-                <g className="cursor-pointer">
-                  <rect x={x} y={y} width={barW - 12} height={bh} rx={3} className="fill-zinc-800 dark:fill-zinc-200" />
-                  <text x={x + (barW - 12) / 2} y={h - 8} textAnchor="middle" fontSize="10" className="fill-zinc-600">{monthLabels[i]}</text>
-                </g>
-              </a>
+              <g key={i}>
+                <rect x={x} y={y} width={barW - 12} height={bh} rx={3} className="fill-zinc-800 dark:fill-zinc-200" />
+                <text x={x + (barW - 12) / 2} y={h - 8} textAnchor="middle" fontSize="10" className="fill-zinc-600">{monthLabels[i]}</text>
+              </g>
             );
           })}
         </svg>
@@ -149,17 +147,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
           <div>
             <a className="text-sm underline" href={`/dashboard/drilldown?kind=birthdays&year=${currYear}`}>Alle Details</a>
           </div>
+          <div className="flex flex-wrap gap-1 text-xs text-zinc-700">
+            {monthLabels.map((ml, i) => (
+              <a key={ml} href={`/dashboard/drilldown?kind=birthdays&year=${currYear}&month=${i}`} className="border rounded px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
+            ))}
+          </div>
         </div>
         <div className="space-y-2">
           <Chart data={jubileesPerMonth} title="Jubiläen pro Monat" kind="jubilees" />
           <div>
             <a className="text-sm underline" href={`/dashboard/drilldown?kind=jubilees&year=${currYear}`}>Alle Details</a>
           </div>
+          <div className="flex flex-wrap gap-1 text-xs text-zinc-700">
+            {monthLabels.map((ml, i) => (
+              <a key={ml} href={`/dashboard/drilldown?kind=jubilees&year=${currYear}&month=${i}`} className="border rounded px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
+            ))}
+          </div>
         </div>
         <div className="space-y-2">
           <Chart data={hiresPerMonth} title="Eintritte pro Monat" kind="hires" />
           <div>
             <a className="text-sm underline" href={`/dashboard/drilldown?kind=hires&year=${currYear}`}>Alle Details</a>
+          </div>
+          <div className="flex flex-wrap gap-1 text-xs text-zinc-700">
+            {monthLabels.map((ml, i) => (
+              <a key={ml} href={`/dashboard/drilldown?kind=hires&year=${currYear}&month=${i}`} className="border rounded px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">{ml}</a>
+            ))}
           </div>
         </div>
       </div>
