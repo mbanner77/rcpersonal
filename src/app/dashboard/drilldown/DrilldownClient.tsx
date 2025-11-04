@@ -6,11 +6,12 @@ type Row = { id: string; name: string; email: string; date: string; extra?: stri
 
 const monthLabels = ["Jan","Feb","Mrz","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 
-export default function DrilldownClient({ initialRows, initialMonth = null, extraLabel }: { initialRows: Row[]; initialMonth?: number | null; extraLabel?: string }) {
+export default function DrilldownClient({ initialRows, initialMonth = null, extraLabel, dateLabel = "Datum" }: { initialRows: Row[]; initialMonth?: number | null; extraLabel?: string; dateLabel?: string }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const [month, setMonth] = useState<number | null>(initialMonth ?? null);
+
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -53,7 +54,7 @@ export default function DrilldownClient({ initialRows, initialMonth = null, extr
               <th className="text-left p-2 border">Name</th>
               <th className="text-left p-2 border">E-Mail</th>
               {extraLabel && <th className="text-left p-2 border">{extraLabel}</th>}
-              <th className="text-left p-2 border">Datum</th>
+              <th className="text-left p-2 border">{dateLabel}</th>
             </tr>
           </thead>
           <tbody>
