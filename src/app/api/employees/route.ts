@@ -3,8 +3,16 @@ import { requireUser } from "@/lib/auth";
 
 export async function GET() {
   const user = await requireUser();
-  const where = user.role === "UNIT_LEAD" && user.unitId ? { unitId: user.unitId } : {};
-  const items = await db.employee.findMany({ where, orderBy: { lastName: "asc" }, include: { unit: true } });
+  const where =
+    user.role === "UNIT_LEAD" && user.unitId
+      ? { unit: { is: { id: user.unitId } } }
+      : undefined;
+
+  const items = await db.employee.findMany({
+    where,
+    orderBy: { lastName: "asc" },
+    include: { unit: true },
+  });
   return Response.json(items);
 }
 

@@ -79,7 +79,7 @@ async function fetchSessionUser(token: string | undefined): Promise<SessionUser 
 }
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   return fetchSessionUser(token);
 }
