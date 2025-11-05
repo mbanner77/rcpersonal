@@ -1,11 +1,15 @@
 import { db } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 
 export async function GET() {
-  const items = await db.employee.findMany({ orderBy: { lastName: "asc" }, include: { unit: true } });
+  const user = await requireUser();
+  const where = user.role === "UNIT_LEAD" && user.unitId ? { unitId: user.unitId } : {};
+  const items = await db.employee.findMany({ where, orderBy: { lastName: "asc" }, include: { unit: true } });
   return Response.json(items);
 }
 
 export async function PATCH(req: Request) {
+  const user = await requireUser();
   const body = await req.json();
   const id = String(body.id ?? "");
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
@@ -60,6 +64,9 @@ export async function PATCH(req: Request) {
 
   const current = await db.employee.findUnique({ where: { id } });
   if (!current) return Response.json({ error: "not found" }, { status: 404 });
+  if (user.role === "UNIT_LEAD" && user.unitId && current.unitId !== user.unitId) {
+    return Response.json({ error: "forbidden" }, { status: 403 });
+  }
   const effFirst = (data.firstName ?? current.firstName) as string;
   const effLast = (data.lastName ?? current.lastName) as string;
   const effEmail = (data.email ?? current.email) as string | null;

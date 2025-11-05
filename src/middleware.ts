@@ -19,8 +19,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const auth = req.cookies.get("rc_auth")?.value;
-  if (auth === "ok") return NextResponse.next();
+  const sessionToken = req.cookies.get("rc_session")?.value;
+  if (sessionToken) return NextResponse.next();
 
   const url = req.nextUrl.clone();
   url.pathname = "/login";

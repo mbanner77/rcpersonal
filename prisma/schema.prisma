@@ -33,10 +33,38 @@ model Unit {
   leader     String?
   deputy     String?
   employees  Employee[]
+  users      User[]
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
   @@unique([name])
+}
+
+enum UserRole {
+  ADMIN
+  UNIT_LEAD
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  role         UserRole  @default(UNIT_LEAD)
+  unit         Unit?     @relation(fields: [unitId], references: [id])
+  unitId       String?
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Setting {
@@ -50,6 +78,8 @@ model Setting {
   smtpUser               String   @default("")
   smtpPass               String   @default("")
   smtpFrom               String   @default("")
+  smtpSecure             Boolean  @default(true)
+  smtpRejectUnauthorized Boolean  @default(true)
   sendOnBirthday         Boolean  @default(true)
   sendOnJubilee          Boolean  @default(true)
   dailySendHour          Int      @default(8) // 0-23

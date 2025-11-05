@@ -12,6 +12,8 @@ function defaultSettings() {
     smtpUser: "rccpersonal@futurestore.shop",
     smtpPass: "",
     smtpFrom: "rccpersonal@futurestore.shop",
+    smtpSecure: true,
+    smtpRejectUnauthorized: true,
     sendOnBirthday: true,
     sendOnJubilee: true,
     dailySendHour: 8,
@@ -32,6 +34,8 @@ export async function GET() {
     if (!found.smtpUser) patch.smtpUser = defaults.smtpUser;
     if (!found.smtpPass) patch.smtpPass = defaults.smtpPass;
     if (!found.smtpFrom) patch.smtpFrom = defaults.smtpFrom;
+    if (typeof found.smtpSecure !== "boolean") patch.smtpSecure = defaults.smtpSecure;
+    if (typeof found.smtpRejectUnauthorized !== "boolean") patch.smtpRejectUnauthorized = defaults.smtpRejectUnauthorized;
     if (Object.keys(patch).length > 0) {
       found = await db.setting.update({ where: { id: 1 }, data: patch });
     }
@@ -46,6 +50,8 @@ export async function GET() {
     smtpUser: found.smtpUser,
     smtpPass: found.smtpPass,
     smtpFrom: found.smtpFrom,
+    smtpSecure: found.smtpSecure,
+    smtpRejectUnauthorized: found.smtpRejectUnauthorized,
     sendOnBirthday: found.sendOnBirthday,
     sendOnJubilee: found.sendOnJubilee,
     dailySendHour: found.dailySendHour,
@@ -68,6 +74,8 @@ export async function POST(req: Request) {
     smtpUser: z.string().optional().transform((s) => s?.trim() ?? ""),
     smtpPass: z.string().optional().transform((s) => s?.trim() ?? ""),
     smtpFrom: z.string().optional().transform((s) => s?.trim() ?? ""),
+    smtpSecure: z.coerce.boolean().default(true),
+    smtpRejectUnauthorized: z.coerce.boolean().default(true),
     sendOnBirthday: z.coerce.boolean().default(true),
     sendOnJubilee: z.coerce.boolean().default(true),
     dailySendHour: z.coerce.number().int().min(0).max(23).default(8),

@@ -31,18 +31,21 @@ export async function POST(req: Request) {
     const user = s?.smtpUser || def.user;
     const pass = s?.smtpPass || def.pass;
     const from = s?.smtpFrom || user || def.from;
+    const secure = typeof s?.smtpSecure === "boolean" ? s.smtpSecure : port === 465;
+    const rejectUnauthorized = typeof s?.smtpRejectUnauthorized === "boolean" ? s.smtpRejectUnauthorized : true;
 
-    log(`SMTP Konfiguration geladen: host=${host}:${port}, user=${user}, secure=${port === 465}`);
+    log(`SMTP Konfiguration geladen: host=${host}:${port}, user=${user}, secure=${secure}, rejectUnauthorized=${rejectUnauthorized}`);
     log(`Versuche Verbindung aufzubauen…`);
 
     const transporter = nodemailer.createTransport({
       host,
       port,
-      secure: port === 465,
+      secure,
       auth: { user, pass },
       connectionTimeout: 15_000,
       greetingTimeout: 15_000,
       logger: false,
+      tls: { rejectUnauthorized },
     });
 
     log(`Verifiziere Zugangsdaten…`);
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
       envelope: info.envelope,
       logs,
       durationMs,
-      config: { host, port, user, from, secure: port === 465 },
+      config: { host, port, user, from, secure, rejectUnauthorized },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
