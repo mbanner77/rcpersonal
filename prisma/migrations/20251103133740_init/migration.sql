@@ -1,28 +1,30 @@
 -- CreateTable
 CREATE TABLE "Employee" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
-    "startDate" DATETIME NOT NULL,
-    "birthDate" DATETIME NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "birthDate" TIMESTAMP(3) NOT NULL,
     "email" TEXT,
-    "lockAll" BOOLEAN NOT NULL DEFAULT false,
-    "lockFirstName" BOOLEAN NOT NULL DEFAULT false,
-    "lockLastName" BOOLEAN NOT NULL DEFAULT false,
-    "lockStartDate" BOOLEAN NOT NULL DEFAULT false,
-    "lockBirthDate" BOOLEAN NOT NULL DEFAULT false,
-    "lockEmail" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "lockAll" BOOLEAN NOT NULL DEFAULT FALSE,
+    "lockFirstName" BOOLEAN NOT NULL DEFAULT FALSE,
+    "lockLastName" BOOLEAN NOT NULL DEFAULT FALSE,
+    "lockStartDate" BOOLEAN NOT NULL DEFAULT FALSE,
+    "lockBirthDate" BOOLEAN NOT NULL DEFAULT FALSE,
+    "lockEmail" BOOLEAN NOT NULL DEFAULT FALSE,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Employee_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Setting" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT DEFAULT 1,
+    "id" INTEGER NOT NULL DEFAULT 1,
     "managerEmails" TEXT NOT NULL DEFAULT '',
     "birthdayEmailTemplate" TEXT NOT NULL DEFAULT 'Happy Birthday, {{firstName}}!',
     "jubileeEmailTemplate" TEXT NOT NULL DEFAULT 'Congrats on {{years}} years, {{firstName}}!',
-    "jubileeYearsCsv" TEXT NOT NULL DEFAULT '5,10,15,20,25,30,35,40'
+    "jubileeYearsCsv" TEXT NOT NULL DEFAULT '5,10,15,20,25,30,35,40',
+    CONSTRAINT "Setting_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
