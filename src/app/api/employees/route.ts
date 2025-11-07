@@ -1,15 +1,16 @@
+import { EmployeeStatus } from "@prisma/client";
 import { db } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireAdmin } from "@/lib/auth";
 
 export async function GET() {
   const user = await requireUser();
-  const where =
+  const baseWhere =
     user.role === "UNIT_LEAD" && user.unitId
       ? { unit: { is: { id: user.unitId } } }
       : undefined;
 
   const items = await db.employee.findMany({
-    where,
+    where: baseWhere,
     orderBy: { lastName: "asc" },
     include: { unit: true },
   });
@@ -35,6 +36,8 @@ export async function PATCH(req: Request) {
     lockBirthDate: boolean;
     lockEmail: boolean;
     unitId: string | null;
+    status: EmployeeStatus;
+    exitDate: Date | string | null;
   };
   const data: Partial<Updatable> = {};
   if (Object.prototype.hasOwnProperty.call(body, "firstName")) data.firstName = String(body.firstName);
@@ -52,10 +55,21 @@ export async function PATCH(req: Request) {
     const incoming = body.unitId;
     data.unitId = incoming === null || incoming === "" ? null : String(incoming);
   }
+  if (Object.prototype.hasOwnProperty.call(body, "status")) {
+    const incoming = String(body.status ?? "").toUpperCase();
+    if (incoming === "EXITED" || incoming === "ACTIVE") {
+      data.status = incoming as EmployeeStatus;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "exitDate")) {
+    const raw = body.exitDate;
+    data.exitDate = raw ? new Date(raw as string | number | Date) : null;
+  }
 
   // parse date strings if provided
   if (typeof data.startDate === "string") data.startDate = new Date(data.startDate);
   if (typeof data.birthDate === "string") data.birthDate = new Date(data.birthDate);
+  if (typeof data.exitDate === "string") data.exitDate = new Date(data.exitDate);
 
   // Generate email if empty and not locked
   function norm(s?: string | null) {
@@ -85,6 +99,26 @@ export async function PATCH(req: Request) {
     if (fn && ln) data.email = `${fn}.${ln}@realcore.de`;
   }
 
+  if (!data.status && current.status === EmployeeStatus.EXITED && !data.exitDate && !body.exitDate && (!body.status || body.status === "EXITED")) {
+    data.exitDate = current.exitDate ?? new Date();
+  }
+  if (data.status === EmployeeStatus.EXITED && !data.exitDate) {
+    data.exitDate = new Date();
+  }
+  if (data.status === EmployeeStatus.ACTIVE && data.exitDate === null) {
+    data.exitDate = null;
+  }
+
   const updated = await db.employee.update({ where: { id }, data, include: { unit: true } });
   return Response.json(updated);
+}
+
+export async function DELETE(req: Request) {
+  await requireAdmin();
+  const { id } = await req.json();
+  if (!id || typeof id !== "string") {
+    return Response.json({ error: "id required" }, { status: 400 });
+  }
+  await db.employee.delete({ where: { id } });
+  return Response.json({ ok: true });
 }

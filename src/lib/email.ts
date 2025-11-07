@@ -1,5 +1,9 @@
 import nodemailer from "nodemailer";
 
+type TransportInfo = {
+  messageId?: string;
+};
+
 export type MailOptions = {
   to: string | string[];
   subject: string;
@@ -36,6 +40,6 @@ export async function sendMail({ to, subject, html }: MailOptions) {
     auth: { user, pass },
   });
 
-  const info = await transporter.sendMail({ from, to, subject, html });
-  return { ok: true, messageId: (info as any)?.messageId } as const;
+  const info: TransportInfo = await transporter.sendMail({ from, to, subject, html });
+  return { ok: true, messageId: info.messageId ?? undefined } as const;
 }

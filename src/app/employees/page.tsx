@@ -25,6 +25,8 @@ type EmployeeRow = {
   lockEmail: boolean;
   unitId: string | null;
   unit?: Unit | null;
+  status: "ACTIVE" | "EXITED";
+  exitDate: string | Date | null;
 };
 
 export default function EmployeesPage() {
@@ -75,6 +77,8 @@ export default function EmployeesPage() {
       const mapped = (data as EmployeeRow[]).map((row) => ({
         ...row,
         unitId: (row.unitId ?? row.unit?.id ?? null) as string | null,
+        status: (row.status ?? "ACTIVE") as "ACTIVE" | "EXITED",
+        exitDate: row.exitDate ?? null,
       }));
       setItems(mapped);
     } finally {
@@ -94,7 +98,23 @@ export default function EmployeesPage() {
   }
 
   async function save(row: EmployeeRow) {
-    const payload = { ...row };
+    const payload = {
+      id: row.id,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      email: row.email,
+      startDate: row.startDate,
+      birthDate: row.birthDate,
+      lockAll: row.lockAll,
+      lockFirstName: row.lockFirstName,
+      lockLastName: row.lockLastName,
+      lockStartDate: row.lockStartDate,
+      lockBirthDate: row.lockBirthDate,
+      lockEmail: row.lockEmail,
+      unitId: row.unitId,
+      status: row.status,
+      exitDate: row.exitDate ? row.exitDate : null,
+    };
     const res = await fetch("/api/employees", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -217,14 +237,17 @@ export default function EmployeesPage() {
                     {it.unit?.deputy && <div className="text-xs text-zinc-500">Stellv.: {it.unit.deputy}</div>}
                   </td>
                   <td className="p-2">
-                    <div className="flex flex-col gap-1 text-xs">
-                      <label className="inline-flex items-center gap-1"><input type="checkbox" checked={!!it.lockAll} onChange={(e) => onFieldChange(it.id, "lockAll", e.target.checked)} /> Datensatz</label>
-                      <div className="grid grid-cols-3 gap-x-3">
-                        <label className="inline-flex items-center gap-1"><input type="checkbox" checked={!!it.lockFirstName} onChange={(e) => onFieldChange(it.id, "lockFirstName", e.target.checked)} /> Vorname</label>
-                        <label className="inline-flex items-center gap-1"><input type="checkbox" checked={!!it.lockLastName} onChange={(e) => onFieldChange(it.id, "lockLastName", e.target.checked)} /> Nachname</label>
-                        <label className="inline-flex items-center gap-1"><input type="checkbox" checked={!!it.lockEmail} onChange={(e) => onFieldChange(it.id, "lockEmail", e.target.checked)} /> Email</label>
-                        <label className="inline-flex items-center gap-1"><input type="checkbox" checked={!!it.lockStartDate} onChange={(e) => onFieldChange(it.id, "lockStartDate", e.target.checked)} /> Eintritt</label>
-                        <label className="inline-flex items-center gap-1"><input type="checkbox" checked={!!it.lockBirthDate} onChange={(e) => onFieldChange(it.id, "lockBirthDate", e.target.checked)} /> Geburtstag</label>
+                    <div className="flex flex-col gap-2 text-xs">
+                      <label className="flex items-center gap-2 whitespace-nowrap">
+                        <input type="checkbox" checked={!!it.lockAll} onChange={(e) => onFieldChange(it.id, "lockAll", e.target.checked)} />
+                        Datensatz
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockFirstName} onChange={(e) => onFieldChange(it.id, "lockFirstName", e.target.checked)} /> Vorname</label>
+                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockLastName} onChange={(e) => onFieldChange(it.id, "lockLastName", e.target.checked)} /> Nachname</label>
+                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockEmail} onChange={(e) => onFieldChange(it.id, "lockEmail", e.target.checked)} /> Email</label>
+                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockStartDate} onChange={(e) => onFieldChange(it.id, "lockStartDate", e.target.checked)} /> Eintritt</label>
+                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockBirthDate} onChange={(e) => onFieldChange(it.id, "lockBirthDate", e.target.checked)} /> Geburtstag</label>
                       </div>
                     </div>
                   </td>

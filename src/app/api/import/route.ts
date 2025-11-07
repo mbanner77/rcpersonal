@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { db } from "@/lib/prisma";
+import { EmployeeStatus } from "@prisma/client";
 
 type ParsedRow = {
   firstName: string | null;
@@ -128,6 +129,14 @@ export async function POST(req: NextRequest) {
     let created = 0;
     let updated = 0;
     let skippedLocked = 0;
+    let exited = 0;
+    let skippedExitLocked = 0;
+    let reactivated = 0;
+
+    const allEmployees = await db.employee.findMany({
+      select: { id: true, firstName: true, lastName: true, birthDate: true, lockAll: true, status: true },
+    });
+    const touched = new Set<string>();
 
     const batchSize = 300; // process in small chunks to reduce memory
     for (let offset = 0; offset < totalRows; offset += batchSize) {
@@ -155,15 +164,18 @@ export async function POST(req: NextRequest) {
 
         if (!existing) {
           const autoEmail = email ?? buildEmail(firstName, lastName) ?? undefined;
-          await db.employee.create({
+          const createdEmployee = await db.employee.create({
             data: {
               firstName: firstName!,
               lastName: lastName!,
               startDate: (startDate ?? new Date()),
               birthDate: birthDate!,
               ...(autoEmail !== undefined ? { email: autoEmail } : {}),
+              status: EmployeeStatus.ACTIVE,
+              exitDate: null,
             },
           });
+          touched.add(createdEmployee.id);
           created++;
           continue;
         }
@@ -179,6 +191,8 @@ export async function POST(req: NextRequest) {
           startDate: Date;
           birthDate: Date;
           email: string | null;
+          status: EmployeeStatus;
+          exitDate: Date | null;
         }> = {};
         if (!existing.lockFirstName && firstName && existing.firstName !== firstName) {
           updateData.firstName = firstName;
@@ -201,19 +215,44 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        if (existing.status === EmployeeStatus.EXITED) {
+          updateData.status = EmployeeStatus.ACTIVE;
+          updateData.exitDate = null;
+        }
+
         if (Object.keys(updateData).length > 0) {
-          await db.employee.update({
+          const updatedEmployee = await db.employee.update({
             where: { id: existing.id },
             data: updateData,
           });
+          touched.add(updatedEmployee.id);
           updated++;
+          if (existing.status === EmployeeStatus.EXITED && updateData.status === EmployeeStatus.ACTIVE) {
+            reactivated++;
+          }
         } else {
+          touched.add(existing.id);
           skippedLocked++;
         }
       }
     }
 
-    return Response.json({ created, updated, skippedLocked });
+    const now = new Date();
+    for (const employee of allEmployees) {
+      if (employee.status === EmployeeStatus.EXITED) continue;
+      if (touched.has(employee.id)) continue;
+      if (employee.lockAll) {
+        skippedExitLocked++;
+        continue;
+      }
+      await db.employee.update({
+        where: { id: employee.id },
+        data: { status: EmployeeStatus.EXITED, exitDate: now },
+      });
+      exited++;
+    }
+
+    return Response.json({ created, updated, skippedLocked, exited, skippedExitLocked, reactivated });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unexpected error";
     return Response.json({ error: msg }, { status: 500 });

@@ -1,5 +1,5 @@
 import { db } from "@/lib/prisma";
-import { findJubileesOnDay, parseJubileeYears } from "@/lib/jubilee";
+import { findJubileesOnDay, parseJubileeYears, type EmployeeLike } from "@/lib/jubilee";
 import { renderTemplate, sendMail } from "@/lib/email";
 
 function parseList(csv: string): string[] {
@@ -18,7 +18,7 @@ export async function GET() {
   ]);
 
   const years = parseJubileeYears(settings ?? undefined);
-  const jubileeHits = findJubileesOnDay(employees as any, years, today);
+  const jubileeHits = findJubileesOnDay(employees as EmployeeLike[], years, today);
 
   // Birthdays
   const birthdayTemplate = settings?.birthdayEmailTemplate ?? "Happy Birthday, {{firstName}}!";

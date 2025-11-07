@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "@/hooks/useSession";
 
 type TestLog = { ts: string; message: string };
 
