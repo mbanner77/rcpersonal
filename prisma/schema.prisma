@@ -91,3 +91,14 @@ model Setting {
   sendOnJubilee          Boolean  @default(true)
   dailySendHour          Int      @default(8) // 0-23
 }
+
+model EmployeeImportLog {
+  id                String   @id @default(cuid())
+  created           Int
+  updated           Int
+  skippedLocked     Int
+  exited            Int
+  skippedExitLocked Int
+  reactivated       Int
+  createdAt         DateTime @default(now())
+}

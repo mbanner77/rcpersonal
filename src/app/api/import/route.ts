@@ -2,7 +2,8 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { db } from "@/lib/prisma";
-import { EmployeeStatus } from "@prisma/client";
+
+type EmployeeStatus = "ACTIVE" | "EXITED";
 
 type ParsedRow = {
   firstName: string | null;
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
               startDate: (startDate ?? new Date()),
               birthDate: birthDate!,
               ...(autoEmail !== undefined ? { email: autoEmail } : {}),
-              status: EmployeeStatus.ACTIVE,
+              status: "ACTIVE",
               exitDate: null,
             },
           });
@@ -215,8 +216,8 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (existing.status === EmployeeStatus.EXITED) {
-          updateData.status = EmployeeStatus.ACTIVE;
+        if (existing.status === "EXITED") {
+          updateData.status = "ACTIVE";
           updateData.exitDate = null;
         }
 
@@ -227,7 +228,7 @@ export async function POST(req: NextRequest) {
           });
           touched.add(updatedEmployee.id);
           updated++;
-          if (existing.status === EmployeeStatus.EXITED && updateData.status === EmployeeStatus.ACTIVE) {
+          if (existing.status === "EXITED" && updateData.status === "ACTIVE") {
             reactivated++;
           }
         } else {
@@ -239,7 +240,7 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
     for (const employee of allEmployees) {
-      if (employee.status === EmployeeStatus.EXITED) continue;
+      if (employee.status === "EXITED") continue;
       if (touched.has(employee.id)) continue;
       if (employee.lockAll) {
         skippedExitLocked++;
@@ -247,10 +248,21 @@ export async function POST(req: NextRequest) {
       }
       await db.employee.update({
         where: { id: employee.id },
-        data: { status: EmployeeStatus.EXITED, exitDate: now },
+        data: { status: "EXITED", exitDate: now },
       });
       exited++;
     }
+
+    await db.employeeImportLog.create({
+      data: {
+        created,
+        updated,
+        skippedLocked,
+        exited,
+        skippedExitLocked,
+        reactivated,
+      },
+    });
 
     return Response.json({ created, updated, skippedLocked, exited, skippedExitLocked, reactivated });
   } catch (err: unknown) {
