@@ -1,4 +1,4 @@
-import { EmployeeStatus } from "@prisma/client";
+import type { EmployeeStatus } from "@prisma/client";
 import { db } from "@/lib/prisma";
 import { requireUser, requireAdmin } from "@/lib/auth";
 
@@ -86,8 +86,16 @@ export async function PATCH(req: Request) {
 
   const current = await db.employee.findUnique({ where: { id } });
   if (!current) return Response.json({ error: "not found" }, { status: 404 });
-  if (user.role === "UNIT_LEAD" && user.unitId && current.unitId !== user.unitId) {
-    return Response.json({ error: "forbidden" }, { status: 403 });
+  if (user.role === "UNIT_LEAD" && user.unitId) {
+    const desiredUnitId = Object.prototype.hasOwnProperty.call(data, "unitId")
+      ? (data.unitId as string | null)
+      : current.unitId;
+    if (desiredUnitId && desiredUnitId !== user.unitId) {
+      return Response.json({ error: "forbidden" }, { status: 403 });
+    }
+    if (!desiredUnitId && current.unitId && current.unitId !== user.unitId) {
+      return Response.json({ error: "forbidden" }, { status: 403 });
+    }
   }
   const effFirst = (data.firstName ?? current.firstName) as string;
   const effLast = (data.lastName ?? current.lastName) as string;
@@ -99,13 +107,13 @@ export async function PATCH(req: Request) {
     if (fn && ln) data.email = `${fn}.${ln}@realcore.de`;
   }
 
-  if (!data.status && current.status === EmployeeStatus.EXITED && !data.exitDate && !body.exitDate && (!body.status || body.status === "EXITED")) {
+  if (!data.status && current.status === "EXITED" && !data.exitDate && !body.exitDate && (!body.status || body.status === "EXITED")) {
     data.exitDate = current.exitDate ?? new Date();
   }
-  if (data.status === EmployeeStatus.EXITED && !data.exitDate) {
+  if (data.status === "EXITED" && !data.exitDate) {
     data.exitDate = new Date();
   }
-  if (data.status === EmployeeStatus.ACTIVE && data.exitDate === null) {
+  if (data.status === "ACTIVE" && data.exitDate === null) {
     data.exitDate = null;
   }
 
