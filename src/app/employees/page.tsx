@@ -97,7 +97,9 @@ export default function EmployeesPage() {
     }
   }
 
-  async function save(row: EmployeeRow) {
+  async function save(id: string) {
+    const row = items?.find((r) => r.id === id);
+    if (!row) return;
     const payload = {
       id: row.id,
       firstName: row.firstName,
@@ -252,7 +254,7 @@ export default function EmployeesPage() {
                     </div>
                   </td>
                   <td className="p-2">
-                    <button onClick={() => save(it)} className="rounded bg-black text-white px-3 py-1">Speichern</button>
+                    <button onClick={() => save(it.id)} className="rounded bg-black text-white px-3 py-1">Speichern</button>
                   </td>
                 </tr>
               ))}
