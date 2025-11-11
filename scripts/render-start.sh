@@ -24,7 +24,9 @@ fi
 if printf '%s' "$OUTPUT" | grep -q 'P3005'; then
   log "Existing schema detected without migration history. Applying baseline..."
   if [ -d prisma/migrations ]; then
-    for dir in $(ls -1 prisma/migrations | sort); do
+    for path in prisma/migrations/*/; do
+      [ -d "$path" ] || continue
+      dir=$(basename "$path")
       log "Marking migration $dir as applied."
       npx prisma migrate resolve --applied "$dir"
     done
