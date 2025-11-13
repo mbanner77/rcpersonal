@@ -336,6 +336,17 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
     .filter((u) => u.name.toLowerCase().includes(filter.trim().toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const createForm = showCreate ? (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+      <input className="border rounded p-2" placeholder="Name" value={newUnit.name} onChange={(e) => setNewUnit((prev) => ({ ...prev, name: e.target.value }))} />
+      <input className="border rounded p-2" placeholder="Leitung" value={newUnit.leader} onChange={(e) => setNewUnit((prev) => ({ ...prev, leader: e.target.value }))} />
+      <input className="border rounded p-2" placeholder="Stellvertretung" value={newUnit.deputy} onChange={(e) => setNewUnit((prev) => ({ ...prev, deputy: e.target.value }))} />
+      <div className="flex items-center gap-2">
+        <button onClick={createUnit} className="border rounded px-3 py-2 disabled:opacity-50" disabled={creating || newUnit.name.trim() === "" || units.some((u) => u.name.trim().toLowerCase() === newUnit.name.trim().toLowerCase())}>Anlegen</button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-zinc-950 border rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-hidden">
@@ -353,16 +364,7 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
                 </button>
                 <div className="text-xs text-zinc-500 whitespace-nowrap">{localUnits.length} Units</div>
               </div>
-              {showCreate && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                  <input className="border rounded p-2" placeholder="Name" value={newUnit.name} onChange={(e) => setNewUnit((prev) => ({ ...prev, name: e.target.value }))} />
-                  <input className="border rounded p-2" placeholder="Leitung" value={newUnit.leader} onChange={(e) => setNewUnit((prev) => ({ ...prev, leader: e.target.value }))} />
-                  <input className="border rounded p-2" placeholder="Stellvertretung" value={newUnit.deputy} onChange={(e) => setNewUnit((prev) => ({ ...prev, deputy: e.target.value }))} />
-                  <div className="flex items-center gap-2">
-                    <button onClick={createUnit} className="border rounded px-3 py-2 disabled:opacity-50" disabled={creating || newUnit.name.trim() === "" || units.some((u) => u.name.trim().toLowerCase() === newUnit.name.trim().toLowerCase())}>Anlegen</button>
-                  </div>
-                </div>
-              })}
+              {createForm}
             </div>
           </div>
           <div className="p-4 space-y-4">
@@ -408,7 +410,7 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
                     )}
                   </div>
                 );
-              )}
+              })}
             </div>
           </div>
         </div>
