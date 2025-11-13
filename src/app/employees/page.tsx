@@ -331,7 +331,12 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
   }
 
   async function deleteUnit(id: string) {
-    if (!confirm("Unit wirklich löschen? Zugeordnete Mitarbeiter werden auf 'Keine' gesetzt.")) return;
+    const original = units.find((u) => u.id === id);
+    const empCount = original?._count?.employees ?? 0;
+    const msg = empCount > 0
+      ? `Unit wirklich löschen? ${empCount} zugeordnete Mitarbeitende werden auf 'Keine' gesetzt.`
+      : "Unit wirklich löschen? Zugeordnete Mitarbeiter werden auf 'Keine' gesetzt.";
+    if (!confirm(msg)) return;
     setSaving(true);
     setError("");
     try {
@@ -397,22 +402,26 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
           <h3 className="text-lg font-semibold">Units verwalten</h3>
           <button onClick={onClose} className="text-sm text-zinc-600 hover:text-zinc-900">Schließen</button>
         </div>
-        <div className="p-4 space-y-4 overflow-y-auto">
-          {error && <div className="text-sm text-red-600">{error}</div>}
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
+        <div className="p-0 overflow-y-auto">
+          <div className="sticky top-0 z-10 bg-white/90 dark:bg-zinc-950/90 backdrop-blur border-b">
+            <div className="p-3 flex items-center gap-2">
               <input
                 className="border rounded p-2 flex-1 min-w-[220px]"
                 placeholder="Suche (Name)"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
               />
-              <div className="text-xs text-zinc-500">{localUnits.length} Units</div>
+              <div className="text-xs text-zinc-500 whitespace-nowrap">{localUnits.length} Units</div>
             </div>
+          </div>
+          <div className="p-4 space-y-4">
+          {error && <div className="text-sm text-red-600">{error}</div>}
+
+          <div className="space-y-3">
             {localUnits.length === 0 && <p className="text-sm text-zinc-600">Noch keine Units angelegt.</p>}
             {localUnits
               .filter((u) => u.name.toLowerCase().includes(filter.trim().toLowerCase()))
+              .sort((a, b) => a.name.localeCompare(b.name))
               .map((unit) => {
                 const original = units.find((x) => x.id === unit.id);
                 const isDirty = !original ||
@@ -423,7 +432,11 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
                 const nameDuplicate = units.some((u) => u.id !== unit.id && u.name.trim().toLowerCase() === unit.name.trim().toLowerCase());
                 const disableSave = saving || nameEmpty || nameDuplicate || !isDirty;
                 return (
-                <div key={unit.id} className="border rounded p-3 space-y-2 bg-zinc-50 dark:bg-zinc-900">
+                <div key={unit.id} className="border rounded-lg p-3 space-y-2 bg-zinc-50 dark:bg-zinc-900">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium">{original?.name ?? unit.name}</div>
+                    <span className="text-xs px-2 py-0.5 rounded-full border bg-white dark:bg-zinc-800">{unit._count?.employees ?? "–"} Mitarbeitende</span>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <label className="text-xs text-zinc-500">Name
                       <input
@@ -448,7 +461,11 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
                     </label>
                   </div>
                   <div className="flex items-center justify-between text-xs text-zinc-500">
-                    <span>Mitarbeiter: {unit._count?.employees ?? "–"}</span>
+                    <div className="flex gap-2">
+                      {isDirty && (
+                        <button onClick={() => original && updateLocal(unit.id, { name: original.name, leader: original.leader ?? null, deputy: original.deputy ?? null })} className="border rounded px-3 py-1">Zurücksetzen</button>
+                      )}
+                    </div>
                     <div className="flex gap-2 text-sm">
                       <button onClick={() => saveUnit(unit)} className="border rounded px-3 py-1 disabled:opacity-50" disabled={disableSave}>Speichern</button>
                       <button onClick={() => deleteUnit(unit.id)} className="border rounded px-3 py-1 text-red-600 disabled:opacity-50" disabled={saving}>Löschen</button>
@@ -461,14 +478,14 @@ function UnitDialog({ units, onClose, onRefresh }: { units: Unit[]; onClose: () 
               );})}
           </div>
 
-          <div className="border rounded p-3 bg-zinc-50 dark:bg-zinc-900 space-y-2">
+          <div className="border rounded-lg p-3 bg-zinc-50 dark:bg-zinc-900 space-y-2">
             <h4 className="font-medium text-sm">Neue Unit anlegen</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <input className="border rounded p-2" placeholder="Name" value={newUnit.name} onChange={(e) => setNewUnit((prev) => ({ ...prev, name: e.target.value }))} />
               <input className="border rounded p-2" placeholder="Leitung" value={newUnit.leader} onChange={(e) => setNewUnit((prev) => ({ ...prev, leader: e.target.value }))} />
               <input className="border rounded p-2" placeholder="Stellvertretung" value={newUnit.deputy} onChange={(e) => setNewUnit((prev) => ({ ...prev, deputy: e.target.value }))} />
             </div>
-            <button onClick={createUnit} className="border rounded px-3 py-1" disabled={creating}>Anlegen</button>
+            <button onClick={createUnit} className="border rounded px-3 py-1 disabled:opacity-50" disabled={creating || newUnit.name.trim() === "" || units.some((u) => u.name.trim().toLowerCase() === newUnit.name.trim().toLowerCase())}>Anlegen</button>
           </div>
         </div>
       </div>
