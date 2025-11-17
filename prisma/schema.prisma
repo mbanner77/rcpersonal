@@ -8,56 +8,213 @@ datasource db {
 }
 
 model Employee {
-  id            String   @id @default(cuid())
-  firstName     String
-  lastName      String
-  startDate     DateTime
-  birthDate     DateTime
-  email         String?  @unique
-  status        EmployeeStatus @default(ACTIVE)
-  exitDate      DateTime?
-  unit          Unit?    @relation(fields: [unitId], references: [id])
-  unitId        String?
-  lockAll       Boolean  @default(false)
-  lockFirstName Boolean  @default(false)
-  lockLastName  Boolean  @default(false)
-  lockStartDate Boolean  @default(false)
-  lockBirthDate Boolean  @default(false)
-  lockEmail     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String               @id @default(cuid())
+  firstName      String
+  lastName       String
+  startDate      DateTime
+  birthDate      DateTime
+  email          String?              @unique
+  status         EmployeeStatus       @default(ACTIVE)
+  exitDate       DateTime?
+  jobTitle       String?
+  contractType   ContractType?        @default(PERMANENT)
+  employmentType EmploymentType?      @default(FULL_TIME)
+  weeklyHours    Int?                 @default(40)
+  remoteQuota    Int?                 @default(0)
+  unit           Unit?                @relation(fields: [unitId], references: [id])
+  unitId         String?
+  department     Department?          @relation(fields: [departmentId], references: [id])
+  departmentId   String?
+  team           Team?                @relation(fields: [teamId], references: [id])
+  teamId         String?
+  location       Location?            @relation(fields: [locationId], references: [id])
+  locationId     String?
+  assignments    EmployeeAssignment[]
+  absences       Absence[]
+  lockAll        Boolean              @default(false)
+  lockFirstName  Boolean              @default(false)
+  lockLastName   Boolean              @default(false)
+  lockStartDate  Boolean              @default(false)
+  lockBirthDate  Boolean              @default(false)
+  lockEmail      Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
   @@unique([firstName, lastName, birthDate])
 }
 
 model Unit {
-  id         String     @id @default(cuid())
-  name       String
-  leader     String?
-  deputy     String?
-  employees  Employee[]
-  users      User[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id           String               @id @default(cuid())
+  name         String
+  leader       String?
+  deputy       String?
+  department   Department?          @relation(fields: [departmentId], references: [id])
+  departmentId String?
+  location     Location?            @relation(fields: [locationId], references: [id])
+  locationId   String?
+  employees    Employee[]
+  teams        Team[]
+  users        User[]
+  absences     Absence[]
+  assignments  EmployeeAssignment[] @relation("AssignmentUnit")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@unique([name])
 }
 
+model Department {
+  id          String               @id @default(cuid())
+  name        String
+  description String?
+  units       Unit[]
+  employees   Employee[]
+  teams       Team[]
+  absences    Absence[]
+  assignments EmployeeAssignment[] @relation("AssignmentDepartment")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([name])
+}
+
+model Team {
+  id           String               @id @default(cuid())
+  name         String
+  unit         Unit?                @relation(fields: [unitId], references: [id])
+  unitId       String?
+  department   Department?          @relation(fields: [departmentId], references: [id])
+  departmentId String?
+  employees    Employee[]
+  absences     Absence[]
+  assignments  EmployeeAssignment[] @relation("AssignmentTeam")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([name])
+}
+
+model Location {
+  id          String               @id @default(cuid())
+  name        String
+  address     String?
+  units       Unit[]
+  employees   Employee[]
+  absences    Absence[]
+  assignments EmployeeAssignment[] @relation("AssignmentLocation")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([name])
+}
+
+model EmployeeAssignment {
+  id             String          @id @default(cuid())
+  employee       Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId     String
+  unitId         String?
+  unit           Unit?           @relation("AssignmentUnit", fields: [unitId], references: [id])
+  departmentId   String?
+  department     Department?     @relation("AssignmentDepartment", fields: [departmentId], references: [id])
+  teamId         String?
+  team           Team?           @relation("AssignmentTeam", fields: [teamId], references: [id])
+  locationId     String?
+  location       Location?       @relation("AssignmentLocation", fields: [locationId], references: [id])
+  jobTitle       String?
+  contractType   ContractType?
+  employmentType EmploymentType?
+  weeklyHours    Int?
+  remoteQuota    Int?
+  startedAt      DateTime        @default(now())
+  endedAt        DateTime?
+  createdAt      DateTime        @default(now())
+
+  @@index([employeeId, startedAt])
+}
+
 enum UserRole {
   ADMIN
+  HR
+  PEOPLE_MANAGER
+  TEAM_LEAD
   UNIT_LEAD
 }
 
+enum ContractType {
+  PERMANENT
+  FIXED_TERM
+  FREELANCE
+  TEMPORARY
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  WORKING_STUDENT
+  INTERN
+  APPRENTICE
+}
+
+model Absence {
+  id             String        @id @default(cuid())
+  employee       Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId     String
+  unit           Unit?         @relation(fields: [unitId], references: [id])
+  unitId         String?
+  department     Department?   @relation(fields: [departmentId], references: [id])
+  departmentId   String?
+  team           Team?         @relation(fields: [teamId], references: [id])
+  teamId         String?
+  location       Location?     @relation(fields: [locationId], references: [id])
+  locationId     String?
+  type           AbsenceType   @default(VACATION)
+  status         AbsenceStatus @default(PENDING)
+  startDate      DateTime
+  endDate        DateTime
+  description    String?
+  managerComment String?
+  createdBy      User?         @relation("AbsenceCreatedBy", fields: [createdById], references: [id])
+  createdById    String?
+  approvedBy     User?         @relation("AbsenceApprovedBy", fields: [approvedById], references: [id])
+  approvedById   String?
+  approvedAt     DateTime?
+  declineReason  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([employeeId, startDate, endDate])
+  @@index([unitId, startDate, endDate])
+}
+
+enum AbsenceType {
+  VACATION
+  SICKNESS
+  PARENTAL_LEAVE
+  TRAINING
+  BUSINESS_TRIP
+  OTHER
+}
+
+enum AbsenceStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String?
-  passwordHash String
-  role         UserRole  @default(UNIT_LEAD)
-  unit         Unit?     @relation(fields: [unitId], references: [id])
-  unitId       String?
-  sessions     Session[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String?
+  passwordHash     String
+  role             UserRole  @default(UNIT_LEAD)
+  unit             Unit?     @relation(fields: [unitId], references: [id])
+  unitId           String?
+  sessions         Session[]
+  absencesCreated  Absence[] @relation("AbsenceCreatedBy")
+  absencesApproved Absence[] @relation("AbsenceApprovedBy")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Session {
@@ -75,21 +232,21 @@ enum EmployeeStatus {
 }
 
 model Setting {
-  id                     Int      @id @default(1)
-  managerEmails          String   @default("")
-  birthdayEmailTemplate  String   @default("Happy Birthday, {{firstName}}!")
-  jubileeEmailTemplate   String   @default("Congrats on {{years}} years, {{firstName}}!")
-  jubileeYearsCsv        String   @default("5,10,15,20,25,30,35,40")
-  smtpHost               String   @default("")
-  smtpPort               Int      @default(465)
-  smtpUser               String   @default("")
-  smtpPass               String   @default("")
-  smtpFrom               String   @default("")
-  smtpSecure             Boolean  @default(true)
-  smtpRejectUnauthorized Boolean  @default(true)
-  sendOnBirthday         Boolean  @default(true)
-  sendOnJubilee          Boolean  @default(true)
-  dailySendHour          Int      @default(8) // 0-23
+  id                     Int     @id @default(1)
+  managerEmails          String  @default("")
+  birthdayEmailTemplate  String  @default("Happy Birthday, {{firstName}}!")
+  jubileeEmailTemplate   String  @default("Congrats on {{years}} years, {{firstName}}!")
+  jubileeYearsCsv        String  @default("5,10,15,20,25,30,35,40")
+  smtpHost               String  @default("")
+  smtpPort               Int     @default(465)
+  smtpUser               String  @default("")
+  smtpPass               String  @default("")
+  smtpFrom               String  @default("")
+  smtpSecure             Boolean @default(true)
+  smtpRejectUnauthorized Boolean @default(true)
+  sendOnBirthday         Boolean @default(true)
+  sendOnJubilee          Boolean @default(true)
+  dailySendHour          Int     @default(8) // 0-23
 }
 
 model EmployeeImportLog {

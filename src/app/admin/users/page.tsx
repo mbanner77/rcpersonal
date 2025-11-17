@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/hooks/useSession";
 
+type UserRole = "ADMIN" | "HR" | "PEOPLE_MANAGER" | "UNIT_LEAD" | "TEAM_LEAD";
+
 type UserDto = {
   id: string;
   email: string;
   name: string | null;
-  role: "ADMIN" | "UNIT_LEAD";
+  role: UserRole;
   unitId: string | null;
   unit: { id: string; name: string } | null;
   createdAt: string;
@@ -22,7 +24,7 @@ type UnitDto = {
 type FormState = {
   email: string;
   name: string;
-  role: "ADMIN" | "UNIT_LEAD";
+  role: UserRole;
   unitId: string | null;
   password: string;
 };
@@ -341,7 +343,10 @@ export default function AdminUsersPage() {
                   onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as FormState["role"] }))}
                 >
                   <option value="ADMIN">Admin</option>
+                  <option value="HR">HR</option>
+                  <option value="PEOPLE_MANAGER">People Manager</option>
                   <option value="UNIT_LEAD">Unit-Leiter</option>
+                  <option value="TEAM_LEAD">Team-Leiter</option>
                 </select>
               </label>
               <label className="block text-sm">

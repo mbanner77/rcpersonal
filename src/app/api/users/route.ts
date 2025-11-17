@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { UserRole } from "@prisma/client";
 import { db } from "@/lib/prisma";
 import { requireAdmin, hashPassword } from "@/lib/auth";
 
@@ -17,7 +18,7 @@ type SelectedUser = {
   id: string;
   email: string;
   name: string | null;
-  role: "ADMIN" | "UNIT_LEAD";
+  role: UserRole;
   unitId: string | null;
   unit: { id: string; name: string } | null;
   createdAt: Date;
@@ -28,7 +29,7 @@ type UserResponse = {
   id: string;
   email: string;
   name: string | null;
-  role: "ADMIN" | "UNIT_LEAD";
+  role: UserRole;
   unitId: string | null;
   unit: { id: string; name: string } | null;
   createdAt: string;
@@ -73,7 +74,7 @@ const createSchema = z.object({
   email: z.string().email().transform((v) => v.toLowerCase()),
   name: z.string().optional().transform((v) => (v?.trim() ? v.trim() : null)),
   password: z.string().min(8),
-  role: z.enum(["ADMIN", "UNIT_LEAD"]),
+  role: z.nativeEnum(UserRole),
   unitId: z.string().optional().transform((v) => (v ? v : null)),
 });
 
@@ -106,7 +107,7 @@ const updateSchema = z.object({
   id: z.string().cuid(),
   email: z.string().email().transform((v) => v.toLowerCase()).optional(),
   name: z.string().optional().transform((v) => (v?.trim() ? v.trim() : null)),
-  role: z.enum(["ADMIN", "UNIT_LEAD"]).optional(),
+  role: z.nativeEnum(UserRole).optional(),
   unitId: z.string().optional().transform((v) => (v ? v : null)),
   password: z.string().min(8).optional(),
 });

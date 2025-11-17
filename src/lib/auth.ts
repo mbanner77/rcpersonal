@@ -6,14 +6,30 @@ import { db } from "@/lib/prisma";
 export const SESSION_COOKIE = "rc_session";
 export const SESSION_TTL_SECONDS = 8 * 60 * 60; // 8 Stunden
 
+export type SessionRole = "ADMIN" | "HR" | "PEOPLE_MANAGER" | "UNIT_LEAD" | "TEAM_LEAD";
+
 export type SessionUser = {
   id: string;
   email: string;
   name: string | null;
-  role: "ADMIN" | "UNIT_LEAD";
+  role: SessionRole;
   unitId: string | null;
   unitName: string | null;
 };
+
+export function hasRole(user: SessionUser | null | undefined, roles: SessionRole | SessionRole[]): boolean {
+  if (!user) return false;
+  const list = Array.isArray(roles) ? roles : [roles];
+  return list.includes(user.role);
+}
+
+export async function requireRoles(roles: SessionRole[]): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!roles.includes(user.role)) {
+    throw new Response("Forbidden", { status: 403 });
+  }
+  return user;
+}
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -93,9 +109,5 @@ export async function requireUser(): Promise<SessionUser> {
 }
 
 export async function requireAdmin(): Promise<SessionUser> {
-  const user = await requireUser();
-  if (user.role !== "ADMIN") {
-    throw new Response("Forbidden", { status: 403 });
-  }
-  return user;
+  return requireRoles(["ADMIN"]);
 }
