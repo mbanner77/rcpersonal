@@ -247,12 +247,12 @@ export async function PATCH(req: Request) {
     }
     if (status === AbsenceStatus.APPROVED) {
       updates.status = AbsenceStatus.APPROVED;
-      updates.approvedById = user.id;
+      updates.approvedBy = { connect: { id: user.id } };
       updates.approvedAt = new Date();
       updates.declineReason = null;
     } else if (status === AbsenceStatus.DECLINED) {
       updates.status = AbsenceStatus.DECLINED;
-      updates.approvedById = user.id;
+      updates.approvedBy = { connect: { id: user.id } };
       updates.approvedAt = new Date();
       updates.declineReason = declineReason?.trim() || "";
     } else if (status === AbsenceStatus.CANCELLED) {
@@ -260,11 +260,11 @@ export async function PATCH(req: Request) {
         return Response.json({ error: "Nur Ersteller oder HR können stornieren" }, { status: 403 });
       }
       updates.status = AbsenceStatus.CANCELLED;
-      updates.approvedById = null;
+      updates.approvedBy = { disconnect: true };
       updates.approvedAt = null;
     } else if (status === AbsenceStatus.PENDING) {
       updates.status = AbsenceStatus.PENDING;
-      updates.approvedById = null;
+      updates.approvedBy = { disconnect: true };
       updates.approvedAt = null;
       updates.declineReason = null;
     }
