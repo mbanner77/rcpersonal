@@ -1,0 +1,2 @@
+-- Baseline migration. This file intentionally contains no SQL because the production database is already provisioned.
+-- Render startup script will mark this migration as applied to establish migration history.
