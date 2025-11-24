@@ -13,6 +13,7 @@ const NAV_LINKS: { href: string; label: string; roles?: Array<SessionRole> }[] =
   { href: "/lifecycle/onboarding", label: "Onboarding", roles: ["ADMIN", "HR", "UNIT_LEAD"] },
   { href: "/lifecycle/offboarding", label: "Offboarding", roles: ["ADMIN", "HR", "UNIT_LEAD"] },
   { href: "/settings", label: "Settings", roles: ["ADMIN"] },
+  { href: "/admin/lifecycle", label: "Lifecycle", roles: ["ADMIN"] },
   { href: "/admin/users", label: "Benutzer", roles: ["ADMIN"] },
 ];
 

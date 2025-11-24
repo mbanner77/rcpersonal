@@ -362,3 +362,79 @@ model EmployeeImportLog {
   reactivated       Int
   createdAt         DateTime @default(now())
 }
+
+// --- On/Offboarding lifecycle ---
+
+enum LifecycleType {
+  ONBOARDING
+  OFFBOARDING
+}
+
+enum LifecycleOwnerRole {
+  HR
+  IT
+  ADMIN
+  UNIT_LEAD
+  TEAM_LEAD
+  PEOPLE_MANAGER
+}
+
+enum LifecycleTaskStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+model LifecycleTemplate {
+  id          String                 @id @default(cuid())
+  title       String
+  type        LifecycleType
+  description String?
+  active      Boolean                @default(true)
+  tasks       LifecycleTaskTemplate[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@unique([title, type])
+}
+
+model LifecycleTaskTemplate {
+  id            String               @id @default(cuid())
+  template      LifecycleTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId    String
+  title         String
+  description   String?
+  ownerRole     LifecycleOwnerRole
+  relativeDays  Int                  // relative due date offset from start (onboarding) or exit (offboarding)
+  orderIndex    Int                  @default(0)
+}
+
+model LifecycleProcess {
+  id            String          @id @default(cuid())
+  employee      Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId    String
+  template      LifecycleTemplate @relation(fields: [templateId], references: [id])
+  templateId    String
+  type          LifecycleType
+  startedAt     DateTime         @default(now())
+  closedAt      DateTime?
+  tasks         LifecycleTask[]
+}
+
+model LifecycleTask {
+  id            String          @id @default(cuid())
+  process       LifecycleProcess @relation(fields: [processId], references: [id], onDelete: Cascade)
+  processId     String
+  title         String
+  description   String?
+  ownerRole     LifecycleOwnerRole
+  status        LifecycleTaskStatus @default(OPEN)
+  dueDate       DateTime?
+  completedAt   DateTime?
+  completedBy   User?            @relation(fields: [completedById], references: [id])
+  completedById String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([processId])
+}
