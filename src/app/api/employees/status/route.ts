@@ -26,7 +26,10 @@ async function generateForEmployee(employeeId: string, type: typeof TaskTypeValu
   const anchorDate: Date | null = type === "ONBOARDING" ? new Date(employee.startDate) : employee.exitDate ? new Date(employee.exitDate) : null;
   if (!anchorDate || isNaN(anchorDate.getTime())) return 0;
 
-  const templates: Array<any> = await (db as any)["taskTemplate"].findMany({ where: { type, active: true } });
+  const templates: Array<any> = await (db as any)["taskTemplate"].findMany({
+    where: { type, active: true },
+    select: { id: true, relativeDueDays: true, ownerRoleId: true },
+  });
   let count = 0;
   for (const tpl of templates) {
     const due = new Date(anchorDate);
@@ -34,13 +37,15 @@ async function generateForEmployee(employeeId: string, type: typeof TaskTypeValu
     if (overwrite) {
       await (db as any)["taskAssignment"].upsert({
         where: { employeeId_taskTemplateId: { employeeId, taskTemplateId: tpl.id } },
-        update: { type, dueDate: due, ownerRole: tpl.ownerRole, status: "OPEN" },
-        create: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRole: tpl.ownerRole },
+        update: { type, dueDate: due, ownerRoleId: tpl.ownerRoleId, statusId: "status_OPEN" },
+        create: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRoleId: tpl.ownerRoleId, statusId: "status_OPEN" },
       });
       count++;
     } else {
       try {
-        await (db as any)["taskAssignment"].create({ data: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRole: tpl.ownerRole } });
+        await (db as any)["taskAssignment"].create({
+          data: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRoleId: tpl.ownerRoleId, statusId: "status_OPEN" },
+        });
         count++;
       } catch (_) {
         // ignore duplicates

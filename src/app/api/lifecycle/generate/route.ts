@@ -38,6 +38,7 @@ export async function POST(req: Request) {
   const templates: Array<any> = await (db as any)["taskTemplate"].findMany({
     where: { type, active: true },
     orderBy: { title: "asc" },
+    select: { id: true, relativeDueDays: true, ownerRoleId: true },
   });
 
   const results: any[] = [];
@@ -49,15 +50,15 @@ export async function POST(req: Request) {
       // upsert: set status back to OPEN and update dueDate/ownerRole
       const up = await (db as any)["taskAssignment"].upsert({
         where: { employeeId_taskTemplateId: { employeeId, taskTemplateId: tpl.id } },
-        update: { type, dueDate: due, ownerRole: tpl.ownerRole, status: "OPEN" },
-        create: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRole: tpl.ownerRole },
+        update: { type, dueDate: due, ownerRoleId: tpl.ownerRoleId, statusId: "status_OPEN" },
+        create: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRoleId: tpl.ownerRoleId, statusId: "status_OPEN" },
       });
       results.push(up);
     } else {
       // create if not exists, ignore on conflict
       try {
         const created = await (db as any)["taskAssignment"].create({
-          data: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRole: tpl.ownerRole },
+          data: { employeeId, taskTemplateId: tpl.id, type, dueDate: due, ownerRoleId: tpl.ownerRoleId, statusId: "status_OPEN" },
         });
         results.push(created);
       } catch (e: any) {
