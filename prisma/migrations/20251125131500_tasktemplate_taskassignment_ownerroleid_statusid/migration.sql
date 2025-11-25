@@ -7,7 +7,7 @@ ALTER TABLE "TaskTemplate" ADD COLUMN "ownerRoleId" TEXT;
 UPDATE "TaskTemplate" t
 SET "ownerRoleId" = lr."id"
 FROM "LifecycleRole" lr
-WHERE lr."key" = t."ownerRole";
+WHERE lr."key" = (t."ownerRole")::text;
 
 ALTER TABLE "TaskTemplate"
   ALTER COLUMN "ownerRoleId" SET NOT NULL;
@@ -27,13 +27,13 @@ ALTER TABLE "TaskAssignment" ADD COLUMN "statusId" TEXT;
 UPDATE "TaskAssignment" ta
 SET "ownerRoleId" = lr."id"
 FROM "LifecycleRole" lr
-WHERE lr."key" = ta."ownerRole";
+WHERE lr."key" = (ta."ownerRole")::text;
 
 -- Map status by key (assuming keys 'OPEN', 'DONE', 'BLOCKED')
 UPDATE "TaskAssignment" ta
 SET "statusId" = ls."id"
 FROM "LifecycleStatus" ls
-WHERE ls."key" = ta."status";
+WHERE ls."key" = (ta."status")::text;
 
 ALTER TABLE "TaskAssignment"
   ALTER COLUMN "ownerRoleId" SET NOT NULL,
