@@ -3,21 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-const TASK_STATUSES = ["OPEN", "DONE", "BLOCKED"] as const;
-const OWNER_ROLES = ["ADMIN", "HR", "PEOPLE_MANAGER", "TEAM_LEAD", "UNIT_LEAD"] as const;
-
-export type TaskStatus = (typeof TASK_STATUSES)[number];
-export type OwnerRole = (typeof OWNER_ROLES)[number];
+type Status = { id: string; key: string; label: string; isDone: boolean };
+type Role = { id: string; key: string; label: string };
 
 type Task = {
   id: string;
   type: "ONBOARDING" | "OFFBOARDING";
-  status: TaskStatus;
-  ownerRole: OwnerRole;
+  status: Status | null;
+  ownerRole: Role | null;
   dueDate: string | null;
   notes: string | null;
   employee: { id: string; firstName: string; lastName: string; email: string | null };
-  template: { id: string; title: string; ownerRole: OwnerRole; type: "ONBOARDING" | "OFFBOARDING" };
+  template: { id: string; title: string; type: "ONBOARDING" | "OFFBOARDING" };
   createdAt: string | null;
   updatedAt: string | null;
   completedAt: string | null;
@@ -32,27 +29,12 @@ type Props = {
   title: string;
 };
 
-type StatusFilter = TaskStatus | "ALL";
-type OwnerFilter = OwnerRole | "ALL";
+type StatusFilter = string | "ALL"; // statusId or ALL
+type OwnerFilter = string | "ALL"; // ownerRoleId or ALL
 
-const statusLabel: Record<TaskStatus, string> = {
-  OPEN: "Offen",
-  DONE: "Erledigt",
-  BLOCKED: "Blockiert",
-};
-
-const ownerRoleLabel: Record<OwnerRole, string> = {
-  ADMIN: "Admin",
-  HR: "HR",
-  PEOPLE_MANAGER: "People Manager",
-  TEAM_LEAD: "Team Lead",
-  UNIT_LEAD: "Unit Lead",
-};
-
-const statusClasses: Record<TaskStatus, string> = {
-  OPEN: "border-amber-200 bg-amber-50 text-amber-800",
-  DONE: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  BLOCKED: "border-rose-200 bg-rose-50 text-rose-700",
+const statusClassesByDone: Record<"done" | "open", string> = {
+  done: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  open: "border-amber-200 bg-amber-50 text-amber-800",
 };
 
 function formatDueInfo(task: Task): string {
@@ -97,8 +79,8 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams({ type: taskType });
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
-      if (ownerFilter !== "ALL") params.set("ownerRole", ownerFilter);
+      if (statusFilter !== "ALL") params.set("statusId", statusFilter);
+      if (ownerFilter !== "ALL") params.set("ownerRoleId", ownerFilter);
       if (appliedSearch.trim()) params.set("q", appliedSearch.trim());
       const res = await fetch(`/api/lifecycle/tasks?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) {
@@ -118,19 +100,16 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   }, [load]);
 
   const statistics = useMemo(() => {
-    return tasks.reduce(
-      (acc, task) => {
-        acc.total += 1;
-        acc.byStatus[task.status] = (acc.byStatus[task.status] ?? 0) + 1;
-        if (task.isOverdue) acc.overdue += 1;
-        return acc;
-      },
-      {
-        total: 0,
-        overdue: 0,
-        byStatus: { OPEN: 0, DONE: 0, BLOCKED: 0 } as Record<TaskStatus, number>,
-      }
-    );
+    const byStatus = new Map<string, number>();
+    let total = 0;
+    let overdue = 0;
+    for (const t of tasks) {
+      total++;
+      if (t.isOverdue) overdue++;
+      const key = t.status?.label ?? "(kein Status)";
+      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
+    }
+    return { total, overdue, byStatus };
   }, [tasks]);
 
   const resetFilters = () => {
@@ -152,15 +131,17 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     setEditDueDate("");
   };
 
-  const updateStatus = async (id: string, status: TaskStatus) => {
+  const updateStatus = async (id: string, statusId: string) => {
     const previous = tasks;
-    setTasks((current) => current.map((task) => (task.id === id ? { ...task, status } : task)));
+    setTasks((current) =>
+      current.map((task) => (task.id === id ? { ...task, status: task.status && task.status.id === statusId ? task.status : task.status } : task))
+    );
     setStatusUpdatingId(id);
     try {
       const res = await fetch(`/api/lifecycle/tasks`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id, statusId }),
       });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
@@ -202,6 +183,18 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     }
   };
 
+  // Ableitungen für Filter/Buttons
+  const distinctStatuses: Status[] = useMemo(() => {
+    const seen = new Map<string, Status>();
+    for (const t of tasks) if (t.status && !seen.has(t.status.id)) seen.set(t.status.id, t.status);
+    return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks]);
+  const distinctRoles: Role[] = useMemo(() => {
+    const seen = new Map<string, Role>();
+    for (const t of tasks) if (t.ownerRole && !seen.has(t.ownerRole.id)) seen.set(t.ownerRole.id, t.ownerRole);
+    return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -237,7 +230,7 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
         </div>
         <div className="rounded border border-amber-100 bg-amber-50 p-3">
           <div className="text-amber-600">Offen</div>
-          <div className="text-xl font-semibold">{statistics.byStatus.OPEN}</div>
+          <div className="text-xl font-semibold">{Array.from(statistics.byStatus.entries()).filter(([k]) => k !== "Erledigt").reduce((n, [, v]) => n + v, 0)}</div>
         </div>
         <div className="rounded border border-rose-100 bg-rose-50 p-3">
           <div className="text-rose-600">Überfällig</div>
@@ -260,9 +253,9 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
             onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
           >
             <option value="ALL">Alle</option>
-            {TASK_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {statusLabel[status]}
+            {distinctStatuses.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
               </option>
             ))}
           </select>
@@ -275,9 +268,9 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
             onChange={(event) => setOwnerFilter(event.target.value as OwnerFilter)}
           >
             <option value="ALL">Alle Rollen</option>
-            {OWNER_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {ownerRoleLabel[role]}
+            {distinctRoles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
               </option>
             ))}
           </select>
@@ -323,9 +316,11 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                     <span className="truncate">{task.template.title}</span>
-                    <span className="rounded border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
-                      {ownerRoleLabel[task.ownerRole]}
-                    </span>
+                    {task.ownerRole && (
+                      <span className="rounded border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
+                        {task.ownerRole.label}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
                     <span>
@@ -345,20 +340,26 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-                  <span className={`rounded border px-2 py-1 ${statusClasses[task.status]}`}>
-                    {statusLabel[task.status]}
-                  </span>
-                  {TASK_STATUSES.map((status) => (
+                  {task.status && (
+                    <span
+                      className={`rounded border px-2 py-1 ${
+                        (task.status.isDone ? statusClassesByDone.done : statusClassesByDone.open)
+                      }`}
+                    >
+                      {task.status.label}
+                    </span>
+                  )}
+                  {distinctStatuses.map((s) => (
                     <button
-                      key={status}
+                      key={s.id}
                       type="button"
                       className={`rounded border px-2 py-1 transition hover:bg-zinc-100 ${
-                        task.status === status ? "border-zinc-400" : "border-zinc-200"
+                        task.status?.id === s.id ? "border-zinc-400" : "border-zinc-200"
                       }`}
-                      onClick={() => updateStatus(task.id, status)}
+                      onClick={() => updateStatus(task.id, s.id)}
                       disabled={statusUpdatingId === task.id}
                     >
-                      {statusLabel[status]}
+                      {s.label}
                     </button>
                   ))}
                   <button
