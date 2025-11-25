@@ -2,24 +2,22 @@ import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { requireUser, type SessionUser } from "@/lib/auth";
 
-const TaskTypeValues = ["ONBOARDING", "OFFBOARDING"] as const;
-
 const createSchema = z.object({
-  title: z.string().min(1).max(200),
+  key: z.string().min(1).max(100),
+  label: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
-  type: z.enum(TaskTypeValues),
-  ownerRoleId: z.string().cuid(),
-  relativeDueDays: z.number().int().min(-365).max(365),
+  type: z.enum(["ONBOARDING", "OFFBOARDING"]).nullable().optional(),
+  orderIndex: z.number().int().min(0).optional().default(0),
   active: z.boolean().optional().default(true),
 });
 
 const updateSchema = z.object({
   id: z.string().cuid(),
-  title: z.string().min(1).max(200).optional(),
+  key: z.string().min(1).max(100).optional(),
+  label: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
-  type: z.enum(TaskTypeValues).optional(),
-  ownerRoleId: z.string().cuid().optional(),
-  relativeDueDays: z.number().int().min(-365).max(365).optional(),
+  type: z.enum(["ONBOARDING", "OFFBOARDING"]).nullable().optional(),
+  orderIndex: z.number().int().min(0).optional(),
   active: z.boolean().optional(),
 });
 
@@ -30,11 +28,8 @@ function ensureAdmin(user: SessionUser) {
 export async function GET() {
   const user = await requireUser();
   ensureAdmin(user);
-  const templates = await (db as any)["taskTemplate"].findMany({
-    orderBy: [{ type: "asc" }, { title: "asc" }],
-    include: { ownerRole: { select: { id: true, key: true, label: true } } },
-  });
-  return Response.json(templates);
+  const roles = await (db as any)["lifecycleRole"].findMany({ orderBy: [{ orderIndex: "asc" }, { key: "asc" }] });
+  return Response.json(roles);
 }
 
 export async function POST(req: Request) {
@@ -42,18 +37,7 @@ export async function POST(req: Request) {
   ensureAdmin(user);
   const parsed = createSchema.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-  const data = parsed.data;
-  const created = await (db as any)["taskTemplate"].create({
-    data: {
-      title: data.title,
-      description: data.description,
-      type: data.type,
-      ownerRoleId: data.ownerRoleId,
-      relativeDueDays: data.relativeDueDays,
-      active: data.active,
-    },
-    include: { ownerRole: { select: { id: true, key: true, label: true } } },
-  });
+  const created = await (db as any)["lifecycleRole"].create({ data: parsed.data });
   return Response.json(created, { status: 201 });
 }
 
@@ -63,10 +47,6 @@ export async function PATCH(req: Request) {
   const parsed = updateSchema.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   const { id, ...rest } = parsed.data;
-  const updated = await (db as any)["taskTemplate"].update({
-    where: { id },
-    data: rest,
-    include: { ownerRole: { select: { id: true, key: true, label: true } } },
-  });
+  const updated = await (db as any)["lifecycleRole"].update({ where: { id }, data: rest });
   return Response.json(updated);
 }

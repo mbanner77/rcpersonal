@@ -5,12 +5,14 @@ import { useSession } from "@/hooks/useSession";
 
 type TemplateType = "ONBOARDING" | "OFFBOARDING";
 
+type Role = { id: string; key: string; label: string };
+
 type LifecycleTemplate = {
   id: string;
   title: string;
   description: string | null;
   type: TemplateType;
-  ownerRole: "ADMIN" | "HR" | "PEOPLE_MANAGER" | "TEAM_LEAD" | "UNIT_LEAD";
+  ownerRole: Role;
   relativeDueDays: number;
   active: boolean;
   createdAt: string;
@@ -21,7 +23,7 @@ type FormState = {
   title: string;
   description: string;
   type: TemplateType;
-  ownerRole: LifecycleTemplate["ownerRole"];
+  ownerRoleId: string;
   relativeDueDays: string;
   active: boolean;
 };
@@ -30,7 +32,7 @@ const EMPTY_FORM: FormState = {
   title: "",
   description: "",
   type: "ONBOARDING",
-  ownerRole: "HR",
+  ownerRoleId: "",
   relativeDueDays: "0",
   active: true,
 };
@@ -40,13 +42,7 @@ const TYPE_LABELS: Record<TemplateType, string> = {
   OFFBOARDING: "Offboarding",
 };
 
-const OWNER_LABELS: Record<LifecycleTemplate["ownerRole"], string> = {
-  ADMIN: "Admin",
-  HR: "HR",
-  PEOPLE_MANAGER: "People Manager",
-  TEAM_LEAD: "Team Lead",
-  UNIT_LEAD: "Unit Lead",
-};
+// Rollen werden dynamisch geladen
 
 function parseApiError(error: unknown, fallback: string): string {
   if (!error) return fallback;
@@ -77,6 +73,7 @@ function parseApiError(error: unknown, fallback: string): string {
 export default function AdminLifecyclePage() {
   const { user, loading: sessionLoading, error: sessionError } = useSession();
   const [templates, setTemplates] = useState<LifecycleTemplate[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
@@ -107,9 +104,21 @@ export default function AdminLifecyclePage() {
     }
   };
 
+  const loadRoles = async () => {
+    try {
+      const res = await fetch("/api/admin/lifecycle/roles");
+      if (!res.ok) throw new Error(`Rollen konnten nicht geladen werden (${res.status})`);
+      const data = (await res.json()) as Role[];
+      setRoles(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   useEffect(() => {
     if (!isAdmin) return;
     void loadTemplates();
+    void loadRoles();
   }, [isAdmin]);
 
   const filteredTemplates = useMemo(() => {
@@ -140,7 +149,7 @@ export default function AdminLifecyclePage() {
       title: tpl.title,
       description: tpl.description ?? "",
       type: tpl.type,
-      ownerRole: tpl.ownerRole,
+      ownerRoleId: tpl.ownerRole.id,
       relativeDueDays: String(tpl.relativeDueDays),
       active: tpl.active,
     });
@@ -160,7 +169,7 @@ export default function AdminLifecyclePage() {
         title: form.title.trim(),
         description: form.description.trim() ? form.description.trim() : undefined,
         type: form.type,
-        ownerRole: form.ownerRole,
+        ownerRoleId: form.ownerRoleId,
         relativeDueDays: Number.parseInt(form.relativeDueDays, 10) || 0,
         active: form.active,
       };
@@ -192,7 +201,7 @@ export default function AdminLifecyclePage() {
         title: form.title.trim(),
         description: form.description.trim() ? form.description.trim() : null,
         type: form.type,
-        ownerRole: form.ownerRole,
+        ownerRoleId: form.ownerRoleId,
         relativeDueDays: Number.parseInt(form.relativeDueDays, 10) || 0,
         active: form.active,
       };
@@ -316,9 +325,7 @@ export default function AdminLifecyclePage() {
                     <span className="rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
                       {TYPE_LABELS[tpl.type]}
                     </span>
-                    <span className="rounded border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
-                      {OWNER_LABELS[tpl.ownerRole]}
-                    </span>
+                    <span className="rounded border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">{tpl.ownerRole.label}</span>
                     {!tpl.active && (
                       <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
                         Deaktiviert
@@ -395,14 +402,13 @@ export default function AdminLifecyclePage() {
                 <span className="text-xs font-medium text-zinc-600">Owner-Rolle</span>
                 <select
                   className="rounded border px-3 py-2"
-                  value={form.ownerRole}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, ownerRole: event.target.value as LifecycleTemplate["ownerRole"] }))
-                  }
+                  value={form.ownerRoleId}
+                  onChange={(event) => setForm((prev) => ({ ...prev, ownerRoleId: event.target.value }))}
                 >
-                  {Object.entries(OWNER_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
+                  <option value="">Bitte wählen…</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
                     </option>
                   ))}
                 </select>

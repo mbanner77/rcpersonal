@@ -3,21 +3,19 @@ import { db } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 
 const TaskTypeValues = ["ONBOARDING", "OFFBOARDING"] as const;
-const TaskStatusValues = ["OPEN", "DONE", "BLOCKED"] as const;
-const OwnerRoleValues = ["ADMIN", "HR", "PEOPLE_MANAGER", "TEAM_LEAD", "UNIT_LEAD"] as const;
 
 const querySchema = z.object({
   id: z.string().cuid().optional(),
   type: z.enum(TaskTypeValues).optional(),
-  status: z.enum(TaskStatusValues).optional(),
-  ownerRole: z.enum(OwnerRoleValues).optional(),
+  statusId: z.string().cuid().optional(),
+  ownerRoleId: z.string().cuid().optional(),
   employeeId: z.string().cuid().optional(),
   q: z.string().max(100).optional(),
 });
 
 const patchSchema = z.object({
   id: z.string().cuid(),
-  status: z.enum(TaskStatusValues).optional(),
+  statusId: z.string().cuid().optional(),
   notes: z.string().max(2000).nullable().optional(),
   dueDate: z.string().datetime().optional(),
 });
@@ -53,8 +51,8 @@ function normalizeTask(task: any) {
   return {
     id: task.id,
     type: task.type,
-    status: task.status,
-    ownerRole: task.ownerRole,
+    status: task.status ? { id: task.status.id, key: task.status.key, label: task.status.label, isDone: task.status.isDone } : null,
+    ownerRole: task.ownerRole ? { id: task.ownerRole.id, key: task.ownerRole.key, label: task.ownerRole.label } : null,
     dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
     notes: task.notes ?? null,
     employee: task.employee,
@@ -74,12 +72,12 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const parsed = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
   if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-  const { id, type, status, ownerRole, employeeId, q } = parsed.data;
+  const { id, type, statusId, ownerRoleId, employeeId, q } = parsed.data;
   const where: any = {};
   if (id) where.id = id;
   if (type) where.type = type;
-  if (status) where.status = status;
-  if (ownerRole) where.ownerRole = ownerRole;
+  if (statusId) where.statusId = statusId;
+  if (ownerRoleId) where.ownerRoleId = ownerRoleId;
   if (employeeId) where.employeeId = employeeId;
   if (q) {
     const search = q.trim();
@@ -97,7 +95,9 @@ export async function GET(req: Request) {
     orderBy: [{ dueDate: "asc" }],
     include: {
       employee: { select: { id: true, firstName: true, lastName: true, email: true } },
-      template: { select: { id: true, title: true, ownerRole: true, type: true } },
+      template: { select: { id: true, title: true, type: true } },
+      ownerRole: { select: { id: true, key: true, label: true } },
+      status: { select: { id: true, key: true, label: true, isDone: true } },
     },
   });
   const normalized = tasks.map((task: any) => normalizeTask(task));
@@ -108,17 +108,18 @@ export async function PATCH(req: Request) {
   await requireUser();
   const parsed = patchSchema.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-  const { id, status, notes, dueDate } = parsed.data;
+  const { id, statusId, notes, dueDate } = parsed.data;
 
   const data: any = {};
-  if (status) {
-    data.status = status;
-    if (status === "DONE") data.completedAt = new Date();
-    if (status !== "DONE") data.completedAt = null;
+  if (statusId) {
+    data.statusId = statusId;
+    // fetch status to decide completedAt
+    const s = await (db as any)["lifecycleStatus"].findUnique({ where: { id: statusId }, select: { isDone: true } });
+    if (s) data.completedAt = s.isDone ? new Date() : null;
   }
   if (notes !== undefined) data.notes = notes ?? null;
   if (dueDate !== undefined) data.dueDate = new Date(dueDate);
 
-  const updated = await (db as any)["taskAssignment"].update({ where: { id }, data });
+  const updated = await (db as any)["taskAssignment"].update({ where: { id }, data, include: { ownerRole: true, status: true, employee: true, template: true } });
   return Response.json(normalizeTask(updated));
 }
