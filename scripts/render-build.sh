@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Render build script: install deps, apply DB migrations safely, then build Next.js
 set -euo pipefail
 
