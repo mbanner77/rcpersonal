@@ -30,10 +30,11 @@ model TaskTemplate {
   title           String
   description     String?
   type            TaskType
-  ownerRole       LifecycleRole? @relation("LifecycleRoleTaskTemplates", fields: [ownerRoleId], references: [id])
+  // Legacy column to satisfy db push in environments that still have it
+  ownerRole       LifecycleOwnerRole?
+  // New relational role; renamed field to avoid name clash with legacy column
+  role            LifecycleRole? @relation("LifecycleRoleTaskTemplates", fields: [ownerRoleId], references: [id])
   ownerRoleId     String?
-  // Keep old DB column mapped as Unsupported to avoid type changes via db push
-  ownerRoleLegacy Unsupported("LifecycleOwnerRole")? @map("ownerRole")
   relativeDueDays Int           // relative to startDate/exitDate depending on type
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
