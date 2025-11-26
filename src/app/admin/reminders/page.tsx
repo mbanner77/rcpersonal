@@ -287,33 +287,35 @@ export default function RemindersPage() {
       </div>
 
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{form.id ? "Erinnerung bearbeiten" : "Neue Erinnerung"}</h2>
-              <button onClick={closeDialog} className="text-sm text-zinc-500">Schließen</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-800">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{form.id ? "Erinnerung bearbeiten" : "Neue Erinnerung"}</h2>
+              <button onClick={closeDialog} className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-600">Typ</span>
-                <select className="rounded border px-3 py-2" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as ReminderType }))}>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Typ</span>
+                <select className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as ReminderType }))}>
                   {TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>{typeLabels[t]}</option>
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-600">Fälligkeit</span>
-                <input type="date" className="rounded border px-3 py-2" value={form.dueDate} onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))} />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Fälligkeit</span>
+                <input type="date" className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.dueDate} onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))} />
               </label>
-              <label className="col-span-2 flex flex-col gap-1">
-                <span className="text-xs text-zinc-600">Beschreibung</span>
-                <textarea className="min-h-[70px] rounded border px-3 py-2" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+              <label className="col-span-2 flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Beschreibung</span>
+                <textarea className="min-h-[70px] rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="Wofür ist diese Erinnerung?" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
               </label>
-              <label className="col-span-2 flex flex-col gap-1">
-                <span className="text-xs text-zinc-600">Berechtigter</span>
-                <select className="rounded border px-3 py-2" value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))}>
+              <label className="col-span-2 flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Berechtigter Mitarbeiter</span>
+                <select className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))}>
                   <option value="">Bitte wählen…</option>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>
@@ -321,51 +323,58 @@ export default function RemindersPage() {
                     </option>
                   ))}
                 </select>
-                {employeesLoading && <span className="text-xs text-zinc-500">Lade Mitarbeitende…</span>}
+                {employeesLoading && <span className="text-xs text-zinc-500 dark:text-zinc-400">Lade Mitarbeitende…</span>}
               </label>
-              <label className="flex items-center gap-2 text-xs text-zinc-600">
-                <input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} /> Aktiv
+              <label className="col-span-2 flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
+                <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-black focus:ring-black dark:border-zinc-600 dark:bg-zinc-700" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Erinnerung ist aktiv</span>
               </label>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-6">
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Erinnerungen</h3>
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Erinnerungszeitpunkte</h3>
                   <button
-                    className="rounded border px-2 py-1 text-xs"
+                    className="flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
                     onClick={() => setForm((p) => ({ ...p, schedules: [...p.schedules, { label: "Neue Erinnerung", daysBefore: 0, timeOfDay: "09:00", orderIndex: p.schedules.length }] }))}
                   >
-                    + Hinzufügen
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    Hinzufügen
                   </button>
                 </div>
                 <div className="space-y-2">
                   {form.schedules.map((s, i) => (
-                    <div key={i} className="grid grid-cols-10 items-center gap-2">
-                      <input className="col-span-4 rounded border px-3 py-2" placeholder="Bezeichnung" value={s.label} onChange={(e) => setForm((p) => { const list = p.schedules.slice(); list[i] = { ...list[i], label: e.target.value }; return { ...p, schedules: list }; })} />
-                      <input type="number" className="col-span-2 rounded border px-3 py-2" placeholder="Tage vorher" value={s.daysBefore} onChange={(e) => setForm((p) => { const list = p.schedules.slice(); list[i] = { ...list[i], daysBefore: Number(e.target.value) }; return { ...p, schedules: list }; })} />
-                      <input className="col-span-2 rounded border px-3 py-2" placeholder="Zeit (HH:mm)" value={s.timeOfDay ?? ""} onChange={(e) => setForm((p) => { const list = p.schedules.slice(); list[i] = { ...list[i], timeOfDay: e.target.value || null }; return { ...p, schedules: list }; })} />
-                      <button className="col-span-2 rounded border border-red-300 px-2 py-2 text-xs text-red-700" onClick={() => setForm((p) => ({ ...p, schedules: p.schedules.filter((_, idx) => idx !== i) }))}>Entfernen</button>
+                    <div key={i} className="flex items-center gap-2">
+                      <input className="flex-[3] rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm transition focus:border-black focus:outline-none dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" placeholder="Bezeichnung" value={s.label} onChange={(e) => setForm((p) => { const list = p.schedules.slice(); list[i] = { ...list[i], label: e.target.value }; return { ...p, schedules: list }; })} />
+                      <input type="number" className="w-16 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm transition focus:border-black focus:outline-none dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" placeholder="Tage" value={s.daysBefore} onChange={(e) => setForm((p) => { const list = p.schedules.slice(); list[i] = { ...list[i], daysBefore: Number(e.target.value) }; return { ...p, schedules: list }; })} />
+                      <input className="w-20 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm transition focus:border-black focus:outline-none dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" placeholder="HH:mm" value={s.timeOfDay ?? ""} onChange={(e) => setForm((p) => { const list = p.schedules.slice(); list[i] = { ...list[i], timeOfDay: e.target.value || null }; return { ...p, schedules: list }; })} />
+                      <button className="rounded-lg p-1.5 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => setForm((p) => ({ ...p, schedules: p.schedules.filter((_, idx) => idx !== i) }))}>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Empfänger</h3>
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Empfänger</h3>
                   <button
-                    className="rounded border px-2 py-1 text-xs"
+                    className="flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
                     onClick={() => setForm((p) => ({ ...p, recipients: [...p.recipients, { email: "" }] }))}
                   >
-                    + Hinzufügen
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    Hinzufügen
                   </button>
                 </div>
                 <div className="space-y-2">
                   {form.recipients.map((r, i) => (
-                    <div key={i} className="grid grid-cols-10 items-center gap-2">
-                      <input className="col-span-8 rounded border px-3 py-2" placeholder="E-Mail" value={r.email} onChange={(e) => setForm((p) => { const list = p.recipients.slice(); list[i] = { ...list[i], email: e.target.value }; return { ...p, recipients: list }; })} />
-                      <button className="col-span-2 rounded border border-red-300 px-2 py-2 text-xs text-red-700" onClick={() => setForm((p) => ({ ...p, recipients: p.recipients.filter((_, idx) => idx !== i) }))}>Entfernen</button>
+                    <div key={i} className="flex items-center gap-2">
+                      <input className="flex-1 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm transition focus:border-black focus:outline-none dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" placeholder="E-Mail (mehrere per ; trennen)" value={r.email} onChange={(e) => setForm((p) => { const list = p.recipients.slice(); list[i] = { ...list[i], email: e.target.value }; return { ...p, recipients: list }; })} />
+                      <button className="rounded-lg p-1.5 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => setForm((p) => ({ ...p, recipients: p.recipients.filter((_, idx) => idx !== i) }))}>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
                     </div>
                   ))}
                   {form.recipients.length === 0 && (
@@ -375,9 +384,9 @@ export default function RemindersPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button onClick={closeDialog} className="rounded border px-3 py-2 text-sm">Abbrechen</button>
-              <button onClick={submit} disabled={saving || !form.employeeId} className="rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{saving ? "Speichern…" : "Speichern"}</button>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button onClick={closeDialog} className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">Abbrechen</button>
+              <button onClick={submit} disabled={saving || !form.employeeId} className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200">{saving ? "Speichern…" : "Speichern"}</button>
             </div>
           </div>
         </div>

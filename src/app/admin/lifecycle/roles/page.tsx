@@ -94,6 +94,11 @@ export default function RolesPage() {
 
   const sorted = useMemo(() => items.slice().sort((a, b) => a.orderIndex - b.orderIndex || a.label.localeCompare(b.label)), [items]);
 
+  const typeColors = {
+    ONBOARDING: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    OFFBOARDING: "bg-rose-100 text-rose-700 border-rose-200",
+  };
+
   if (!isAdmin) return <div className="p-6 text-sm text-red-600">Zugriff verweigert</div>;
 
   return (
@@ -101,56 +106,92 @@ export default function RolesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Lifecycle-Rollen</h1>
-          <p className="text-sm text-zinc-600">Definiere Rollen, die Aufgaben besitzen.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Definiere Rollen, die Aufgaben besitzen.</p>
         </div>
-        <button onClick={openCreate} className="rounded bg-black px-4 py-2 text-sm font-medium text-white">Neu</button>
+        <button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          Neue Rolle
+        </button>
       </div>
 
-      {error && <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-      {loading && <div className="text-sm text-zinc-500">Lade…</div>}
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">{error}</div>}
+      {loading && <div className="flex items-center gap-2 text-sm text-zinc-500"><svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Lade…</div>}
 
-      <div className="divide-y rounded border">
+      <div className="grid gap-3">
         {sorted.map((r) => (
-          <div key={r.id} className="grid grid-cols-6 items-center gap-2 p-3 text-sm">
-            <div className="col-span-2 font-medium">{r.label}</div>
-            <div className="text-zinc-500">{r.key}</div>
-            <div className="text-zinc-500">{r.type ?? "-"}</div>
-            <div className="text-zinc-500">#{r.orderIndex}</div>
-            <div className="flex items-center justify-end gap-2">
-              {!r.active && <span className="rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-amber-700">inaktiv</span>}
-              <button onClick={() => openEdit(r)} className="rounded border px-3 py-1">Bearbeiten</button>
+          <div key={r.id} className={`group flex items-center justify-between rounded-xl border bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800 ${!r.active ? "opacity-60" : ""}`}>
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-700">
+                <svg className="h-5 w-5 text-zinc-600 dark:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{r.label}</span>
+                  <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">{r.key}</code>
+                  {r.type && <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${typeColors[r.type]}`}>{r.type === "ONBOARDING" ? "Onboarding" : "Offboarding"}</span>}
+                  {!r.active && <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">Inaktiv</span>}
+                </div>
+                {r.description && <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{r.description}</p>}
+              </div>
             </div>
+            <button onClick={() => openEdit(r)} className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 opacity-0 shadow-sm transition hover:bg-zinc-50 group-hover:opacity-100 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">
+              Bearbeiten
+            </button>
           </div>
         ))}
         {sorted.length === 0 && !loading && (
-          <div className="p-6 text-center text-sm text-zinc-500">Keine Rollen vorhanden.</div>
+          <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center dark:border-zinc-700 dark:bg-zinc-800/50">
+            <svg className="mx-auto h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            <h3 className="mt-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">Keine Rollen vorhanden</h3>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Erstellen Sie eine neue Rolle, um loszulegen.</p>
+          </div>
         )}
       </div>
 
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{form.id ? "Rolle bearbeiten" : "Neue Rolle"}</h2>
-              <button onClick={closeDialog} className="text-sm text-zinc-500">Schließen</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-800">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{form.id ? "Rolle bearbeiten" : "Neue Rolle"}</h2>
+              <button onClick={closeDialog} className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-            <div className="grid gap-3 text-sm">
-              <label className="flex flex-col gap-1"><span className="text-xs text-zinc-600">Schlüssel</span><input className="rounded border px-3 py-2" value={form.key} onChange={(e) => setForm((p) => ({ ...p, key: e.target.value }))} /></label>
-              <label className="flex flex-col gap-1"><span className="text-xs text-zinc-600">Bezeichnung</span><input className="rounded border px-3 py-2" value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} /></label>
-              <label className="flex flex-col gap-1"><span className="text-xs text-zinc-600">Beschreibung</span><textarea className="min-h-[80px] rounded border px-3 py-2" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></label>
-              <label className="flex flex-col gap-1"><span className="text-xs text-zinc-600">Typ</span>
-                <select className="rounded border px-3 py-2" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as FormState["type"] }))}>
-                  <option value="">(keiner)</option>
-                  <option value="ONBOARDING">Onboarding</option>
-                  <option value="OFFBOARDING">Offboarding</option>
-                </select>
+            <div className="grid gap-4 text-sm">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Schlüssel</span>
+                <input className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="z.B. HR_MANAGER" value={form.key} onChange={(e) => setForm((p) => ({ ...p, key: e.target.value }))} />
               </label>
-              <label className="flex flex-col gap-1"><span className="text-xs text-zinc-600">Reihenfolge</span><input type="number" className="rounded border px-3 py-2" value={form.orderIndex} onChange={(e) => setForm((p) => ({ ...p, orderIndex: e.target.value }))} /></label>
-              <label className="flex items-center gap-2 text-xs text-zinc-600"><input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} /> Aktiv</label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Bezeichnung</span>
+                <input className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="z.B. HR Manager" value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Beschreibung</span>
+                <textarea className="min-h-[80px] rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="Optionale Beschreibung..." value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Typ</span>
+                  <select className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as FormState["type"] }))}>
+                    <option value="">Alle</option>
+                    <option value="ONBOARDING">Onboarding</option>
+                    <option value="OFFBOARDING">Offboarding</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Reihenfolge</span>
+                  <input type="number" className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.orderIndex} onChange={(e) => setForm((p) => ({ ...p, orderIndex: e.target.value }))} />
+                </label>
+              </div>
+              <label className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
+                <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-black focus:ring-black dark:border-zinc-600 dark:bg-zinc-700" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Rolle ist aktiv</span>
+              </label>
             </div>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button onClick={closeDialog} className="rounded border px-3 py-2 text-sm">Abbrechen</button>
-              <button onClick={submit} disabled={saving} className="rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{saving ? "Speichern…" : "Speichern"}</button>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button onClick={closeDialog} className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">Abbrechen</button>
+              <button onClick={submit} disabled={saving} className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200">{saving ? "Speichern…" : "Speichern"}</button>
             </div>
           </div>
         </div>
