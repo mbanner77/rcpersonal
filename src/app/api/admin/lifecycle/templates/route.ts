@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     const id = `c${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
     await (db as any).$executeRawUnsafe(
       `INSERT INTO "TaskTemplate" (id, title, description, type, "ownerRole", "ownerRoleId", "relativeDueDays", active, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4::"TaskType", $5::"LifecycleOwnerRole", $6, $7, $8, NOW(), NOW())`,
+       VALUES ($1, $2, $3, CAST($4 AS "TaskType"), CAST($5 AS "LifecycleOwnerRole"), $6, $7, $8, NOW(), NOW())`,
       id,
       data.title,
       data.description ?? null,

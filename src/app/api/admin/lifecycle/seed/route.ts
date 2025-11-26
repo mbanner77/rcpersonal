@@ -45,7 +45,7 @@ async function createTemplateRaw(
   const legacyOwnerRole = legacyEnumMap[roleKey] ?? "HR";
   await prisma.$executeRawUnsafe(
     `INSERT INTO "TaskTemplate" (id, title, description, type, "ownerRole", "ownerRoleId", "relativeDueDays", active, "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, $4::"TaskType", $5::"LifecycleOwnerRole", $6, $7, true, NOW(), NOW())`,
+     VALUES ($1, $2, $3, CAST($4 AS "TaskType"), CAST($5 AS "LifecycleOwnerRole"), $6, $7, true, NOW(), NOW())`,
     id,
     title,
     description,
