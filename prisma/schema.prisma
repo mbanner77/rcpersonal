@@ -458,3 +458,47 @@ model LifecycleTask {
 
   @@index([processId])
 }
+
+// --- Reminders ---
+
+enum ReminderType {
+  GEHALT
+  MEILENSTEIN
+  SONDERBONUS
+  STAFFELBONUS
+  URLAUBSGELD
+  WEIHNACHTSGELD
+}
+
+model Reminder {
+  id          String        @id @default(cuid())
+  type        ReminderType
+  description String?
+  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  dueDate     DateTime
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  schedules   ReminderSchedule[]
+  recipients  ReminderRecipient[]
+}
+
+model ReminderSchedule {
+  id          String    @id @default(cuid())
+  reminder    Reminder  @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  reminderId  String
+  label       String
+  daysBefore  Int       // 0 = at due date, positive = days before
+  timeOfDay   String?   // optional HH:mm for sending window
+  orderIndex  Int       @default(0)
+}
+
+model ReminderRecipient {
+  id          String    @id @default(cuid())
+  reminder    Reminder  @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  reminderId  String
+  email       String
+  orderIndex  Int       @default(0)
+}
