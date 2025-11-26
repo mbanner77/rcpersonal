@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSession } from "@/hooks/useSession";
 
 type TemplateType = "ONBOARDING" | "OFFBOARDING";
@@ -283,13 +284,27 @@ export default function AdminLifecyclePage() {
             Lege Aufgaben-Templates für Onboarding- und Offboarding-Prozesse an und optimiere den Ablauf.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90"
-        >
-          Neue Vorlage anlegen
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/lifecycle/roles"
+            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+          >
+            Rollen verwalten
+          </Link>
+          <Link
+            href="/admin/lifecycle/statuses"
+            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+          >
+            Status verwalten
+          </Link>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90"
+          >
+            Neue Vorlage anlegen
+          </button>
+        </div>
       </div>
 
       {error && <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}

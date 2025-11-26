@@ -78,18 +78,12 @@ export async function POST(req: Request) {
     const parsed = createSchema.safeParse(await req.json());
     if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
     const data = parsed.data;
-    // Get role key for legacy ownerRole field
-    const roleInfo = await (db as any)["lifecycleRole"].findUnique({
-      where: { id: data.ownerRoleId },
-      select: { key: true },
-    });
     const created = await (db as any)["taskTemplate"].create({
       data: {
         title: data.title,
         description: data.description,
         type: data.type,
         ownerRoleId: data.ownerRoleId,
-        ownerRole: roleInfo?.key ?? data.ownerRoleId,
         relativeDueDays: data.relativeDueDays,
         active: data.active,
       },
@@ -110,22 +104,11 @@ export async function PATCH(req: Request) {
     ensureAdmin(user);
     const parsed = updateSchema.safeParse(await req.json());
     if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-    const { id, ownerRoleId, ...rest } = parsed.data;
-    
-    // Build update data, including legacy ownerRole if ownerRoleId changed
-    const updateData: Record<string, unknown> = { ...rest };
-    if (ownerRoleId) {
-      updateData.ownerRoleId = ownerRoleId;
-      const roleInfo = await (db as any)["lifecycleRole"].findUnique({
-        where: { id: ownerRoleId },
-        select: { key: true },
-      });
-      updateData.ownerRole = roleInfo?.key ?? ownerRoleId;
-    }
+    const { id, ...rest } = parsed.data;
     
     const updated = await (db as any)["taskTemplate"].update({
       where: { id },
-      data: updateData,
+      data: rest,
       include: { role: { select: { id: true, key: true, label: true } } },
     });
     // Transform to rename 'role' to 'ownerRole' for frontend compatibility
