@@ -32,8 +32,8 @@ model TaskTemplate {
   type            TaskType
   ownerRole       LifecycleRole? @relation("LifecycleRoleTaskTemplates", fields: [ownerRoleId], references: [id])
   ownerRoleId     String?
-  // Keep old DB column mapped to legacy enum so db push does not drop it
-  ownerRoleLegacy LifecycleOwnerRole? @map("ownerRole")
+  // Keep old DB column mapped as Unsupported to avoid type changes via db push
+  ownerRoleLegacy Unsupported("LifecycleOwnerRole")? @map("ownerRole")
   relativeDueDays Int           // relative to startDate/exitDate depending on type
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -56,9 +56,9 @@ model TaskAssignment {
   dueDate        DateTime
   ownerRole      LifecycleRole @relation("LifecycleRoleTaskAssignments", fields: [ownerRoleId], references: [id])
   ownerRoleId    String
-  // Keep old DB columns mapped to legacy enums so db push does not drop them
-  ownerRoleLegacy LifecycleOwnerRole? @map("ownerRole")
-  statusLegacy    TaskStatus?         @map("status")
+  // Keep old DB columns mapped as Unsupported to avoid type changes via db push
+  ownerRoleLegacy Unsupported("LifecycleOwnerRole")? @map("ownerRole")
+  statusLegacy    Unsupported("TaskStatus")?         @map("status")
   notes          String?
   completedAt    DateTime?
   createdAt      DateTime      @default(now())
