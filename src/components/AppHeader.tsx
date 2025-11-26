@@ -15,6 +15,7 @@ const NAV_LINKS: { href: string; label: string; roles?: Array<SessionRole> }[] =
   { href: "/settings", label: "Settings", roles: ["ADMIN"] },
   { href: "/admin/lifecycle", label: "Lifecycle", roles: ["ADMIN"] },
   { href: "/admin/users", label: "Benutzer", roles: ["ADMIN"] },
+  { href: "/admin/reminders", label: "Erinnerungen", roles: ["ADMIN", "UNIT_LEAD"] },
 ];
 
 export default function AppHeader() {

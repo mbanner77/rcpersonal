@@ -524,3 +524,15 @@ model ReminderRecipient {
   email       String
   orderIndex  Int       @default(0)
 }
+
+model ReminderSendLog {
+  id           String    @id @default(cuid())
+  reminder     Reminder  @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  reminderId   String
+  scheduleLabel String
+  targetEmail  String
+  sentAt       DateTime  @default(now())
+
+  @@index([reminderId, sentAt])
+  @@unique([reminderId, scheduleLabel, targetEmail, sentAt])
+}
