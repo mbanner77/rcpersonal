@@ -19,7 +19,42 @@ const prisma = db as unknown as {
     create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }>;
     count: () => Promise<number>;
   };
+  $executeRawUnsafe: (query: string, ...values: unknown[]) => Promise<number>;
 };
+
+// Map role keys to legacy enum values
+const legacyEnumMap: Record<string, string> = {
+  ADMIN: "ADMIN",
+  HR: "HR",
+  IT: "IT", 
+  UNIT_LEAD: "UNIT_LEAD",
+  TEAM_LEAD: "TEAM_LEAD",
+  PEOPLE_MANAGER: "PEOPLE_MANAGER",
+};
+
+// Helper to create template with raw SQL (for legacy enum column)
+async function createTemplateRaw(
+  title: string,
+  description: string,
+  type: "ONBOARDING" | "OFFBOARDING",
+  ownerRoleId: string,
+  roleKey: string,
+  relativeDueDays: number
+): Promise<void> {
+  const id = `c${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
+  const legacyOwnerRole = legacyEnumMap[roleKey] ?? "HR";
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "TaskTemplate" (id, title, description, type, "ownerRole", "ownerRoleId", "relativeDueDays", active, "createdAt", "updatedAt")
+     VALUES ($1, $2, $3, $4::"TaskType", $5::"LifecycleOwnerRole", $6, $7, true, NOW(), NOW())`,
+    id,
+    title,
+    description,
+    type,
+    legacyOwnerRole,
+    ownerRoleId,
+    relativeDueDays
+  );
+}
 
 function ensureAdmin(user: SessionUser) {
   if (user.role !== "ADMIN") throw new Response("Forbidden", { status: 403 });
@@ -131,16 +166,14 @@ export async function POST() {
           results.templates.skipped++;
           continue;
         }
-        await prisma.taskTemplate.create({
-          data: {
-            title: tpl.title,
-            description: tpl.description,
-            type: "ONBOARDING",
-            ownerRoleId,
-            relativeDueDays: tpl.days,
-            active: true,
-          },
-        });
+        await createTemplateRaw(
+          tpl.title,
+          tpl.description,
+          "ONBOARDING",
+          ownerRoleId,
+          tpl.roleKey,
+          tpl.days
+        );
         results.templates.created++;
       } catch {
         results.templates.skipped++;
@@ -160,16 +193,14 @@ export async function POST() {
           results.templates.skipped++;
           continue;
         }
-        await prisma.taskTemplate.create({
-          data: {
-            title: tpl.title,
-            description: tpl.description,
-            type: "OFFBOARDING",
-            ownerRoleId,
-            relativeDueDays: tpl.days,
-            active: true,
-          },
-        });
+        await createTemplateRaw(
+          tpl.title,
+          tpl.description,
+          "OFFBOARDING",
+          ownerRoleId,
+          tpl.roleKey,
+          tpl.days
+        );
         results.templates.created++;
       } catch {
         results.templates.skipped++;

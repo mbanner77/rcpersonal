@@ -78,17 +78,49 @@ export async function POST(req: Request) {
     const parsed = createSchema.safeParse(await req.json());
     if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
     const data = parsed.data;
-    const created = await (db as any)["taskTemplate"].create({
-      data: {
-        title: data.title,
-        description: data.description,
-        type: data.type,
-        ownerRoleId: data.ownerRoleId,
-        relativeDueDays: data.relativeDueDays,
-        active: data.active,
-      },
+    
+    // Get the role key to use for legacy ownerRole enum column
+    const roleInfo = data.ownerRoleId ? await (db as any)["lifecycleRole"].findUnique({
+      where: { id: data.ownerRoleId },
+      select: { key: true },
+    }) : null;
+    
+    // Map role key to legacy enum value (must match DB enum exactly)
+    const legacyEnumMap: Record<string, string> = {
+      ADMIN: "ADMIN",
+      HR: "HR", 
+      IT: "IT",
+      UNIT_LEAD: "UNIT_LEAD",
+      TEAM_LEAD: "TEAM_LEAD",
+      PEOPLE_MANAGER: "PEOPLE_MANAGER",
+    };
+    const legacyOwnerRole = roleInfo?.key && legacyEnumMap[roleInfo.key] ? legacyEnumMap[roleInfo.key] : "HR";
+    
+    // Use raw SQL to insert with the legacy enum value
+    const id = `c${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
+    await (db as any).$executeRawUnsafe(
+      `INSERT INTO "TaskTemplate" (id, title, description, type, "ownerRole", "ownerRoleId", "relativeDueDays", active, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4::"TaskType", $5::"LifecycleOwnerRole", $6, $7, $8, NOW(), NOW())`,
+      id,
+      data.title,
+      data.description ?? null,
+      data.type,
+      legacyOwnerRole,
+      data.ownerRoleId,
+      data.relativeDueDays,
+      data.active
+    );
+    
+    // Fetch the created record with relations
+    const created = await (db as any)["taskTemplate"].findUnique({
+      where: { id },
       include: { role: { select: { id: true, key: true, label: true } } },
     });
+    
+    if (!created) {
+      return Response.json({ error: "Template created but could not be fetched" }, { status: 500 });
+    }
+    
     // Transform to rename 'role' to 'ownerRole' for frontend compatibility
     const { role, ...rest } = created as Record<string, unknown>;
     return Response.json({ ...rest, ownerRole: role }, { status: 201 });
