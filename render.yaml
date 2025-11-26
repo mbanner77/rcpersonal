@@ -51,5 +51,5 @@ services:
 
 databases:
   - name: employee-anniversaries-db
-    plan: free
+    plan: basic-256mb
     region: frankfurt
