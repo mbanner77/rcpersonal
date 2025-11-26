@@ -14,8 +14,8 @@ model TaskTemplate {
   title           String
   description     String?
   type            TaskType
-  ownerRole       LifecycleRole @relation("LifecycleRoleTaskTemplates", fields: [ownerRoleId], references: [id])
-  ownerRoleId     String
+  ownerRole       LifecycleRole? @relation("LifecycleRoleTaskTemplates", fields: [ownerRoleId], references: [id])
+  ownerRoleId     String?
   relativeDueDays Int           // relative to startDate/exitDate depending on type
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
