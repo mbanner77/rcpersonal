@@ -16,6 +16,14 @@ if [ -n "${DATABASE_URL:-}" ]; then
     rm -f prisma/migrations/migration_lock.toml
   fi
 
+  # Pre-flight: if there are recorded failed runtime migrations, mark them rolled-back
+  for path in prisma/migrations/*render_runtime*/; do
+    [ -d "$path" ] || continue
+    dir=$(basename "$path")
+    log "Pre-flight resolve: marking failed runtime migration as rolled-back: $dir"
+    npx prisma migrate resolve --rolled-back "$dir" || true
+  done
+
   set +e
   OUTPUT=$(npx prisma migrate deploy 2>&1)
   STATUS=$?
@@ -71,6 +79,19 @@ if [ -n "${DATABASE_URL:-}" ]; then
       else
         log "Applying runtime migration and marking as applied."
         npx prisma migrate deploy || { log "migrate deploy failed after runtime diff."; exit 1; }
+      fi
+      # If runtime diff path also caused P3009, roll it back and do a final deploy try
+      set +e
+      OUT3=$(npx prisma migrate status 2>&1)
+      set -e
+      if printf '%s' "$OUT3" | grep -q 'has failed'; then
+        log "Detected failed runtime migration after diff; marking as rolled-back and retrying final deploy."
+        for path in prisma/migrations/*render_runtime*/; do
+          [ -d "$path" ] || continue
+          dir=$(basename "$path")
+          npx prisma migrate resolve --rolled-back "$dir" || true
+        done
+        npx prisma migrate deploy || { log "Final migrate deploy failed after rollback."; exit 1; }
       fi
     fi
   fi
