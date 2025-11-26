@@ -83,13 +83,14 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   // Load employees for the generate panel
   const loadEmployees = useCallback(async () => {
     try {
-      const res = await fetch("/api/employees?limit=500");
+      const res = await fetch("/api/employees");
       if (res.ok) {
         const data = await res.json();
-        setEmployees(data.data ?? data ?? []);
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setEmployees(list);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("Failed to load employees:", err);
     }
   }, []);
 
@@ -288,21 +289,22 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-emerald-800">Mitarbeiter</span>
               <select
-                className="min-w-[250px] rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="min-w-[300px] rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
               >
-                <option value="">Bitte wählen…</option>
-                {employees
-                  .filter((emp) => taskType === "ONBOARDING" ? emp.startDate : emp.exitDate)
-                  .map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.lastName}, {emp.firstName}
-                      {emp.email ? ` (${emp.email})` : ""}
-                      {taskType === "ONBOARDING" && emp.startDate ? ` — Start: ${new Date(emp.startDate).toLocaleDateString()}` : ""}
-                      {taskType === "OFFBOARDING" && emp.exitDate ? ` — Austritt: ${new Date(emp.exitDate).toLocaleDateString()}` : ""}
+                <option value="">Bitte wählen… ({employees.length} Mitarbeiter)</option>
+                {employees.map((emp) => {
+                  const hasRequiredDate = taskType === "ONBOARDING" ? emp.startDate : emp.exitDate;
+                  const dateLabel = taskType === "ONBOARDING" 
+                    ? (emp.startDate ? `Start: ${new Date(emp.startDate).toLocaleDateString()}` : "⚠️ Kein Startdatum")
+                    : (emp.exitDate ? `Austritt: ${new Date(emp.exitDate).toLocaleDateString()}` : "⚠️ Kein Austrittsdatum");
+                  return (
+                    <option key={emp.id} value={emp.id} disabled={!hasRequiredDate}>
+                      {emp.lastName}, {emp.firstName} — {dateLabel}
                     </option>
-                  ))}
+                  );
+                })}
               </select>
             </label>
             <button
@@ -320,8 +322,9 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
             </div>
           )}
           {employees.length === 0 && (
-            <div className="mt-3 text-xs text-emerald-700">
-              Lade Mitarbeiterliste…
+            <div className="mt-3 flex items-center gap-2 text-xs text-emerald-700">
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+              Lade Mitarbeiterliste… Falls keine Mitarbeiter angezeigt werden, prüfen Sie die Employees-Seite.
             </div>
           )}
         </div>
