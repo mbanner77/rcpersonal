@@ -16,6 +16,8 @@ model TaskTemplate {
   type            TaskType
   ownerRole       LifecycleRole? @relation("LifecycleRoleTaskTemplates", fields: [ownerRoleId], references: [id])
   ownerRoleId     String?
+  // Keep old DB column visible to prisma db push to avoid data-loss drop warnings on Render
+  legacyOwnerRole String?       @map("ownerRole") @ignore
   relativeDueDays Int           // relative to startDate/exitDate depending on type
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -38,6 +40,9 @@ model TaskAssignment {
   dueDate        DateTime
   ownerRole      LifecycleRole @relation("LifecycleRoleTaskAssignments", fields: [ownerRoleId], references: [id])
   ownerRoleId    String
+  // Keep old DB columns visible to prisma db push to avoid data-loss drop warnings on Render
+  legacyOwnerRole String?      @map("ownerRole") @ignore
+  legacyStatus    String?      @map("status") @ignore
   notes          String?
   completedAt    DateTime?
   createdAt      DateTime      @default(now())
