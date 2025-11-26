@@ -9,6 +9,22 @@ enum TaskType {
   OFFBOARDING
 }
 
+// Legacy enums retained to prevent Render db push from dropping existing columns before migrations run
+enum LifecycleOwnerRole {
+  ADMIN
+  HR
+  IT
+  UNIT_LEAD
+  TEAM_LEAD
+  PEOPLE_MANAGER
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  BLOCKED
+}
+
 model TaskTemplate {
   id              String        @id @default(cuid())
   title           String
@@ -16,8 +32,8 @@ model TaskTemplate {
   type            TaskType
   ownerRole       LifecycleRole? @relation("LifecycleRoleTaskTemplates", fields: [ownerRoleId], references: [id])
   ownerRoleId     String?
-  // Keep old DB column visible to prisma db push to avoid data-loss drop warnings on Render
-  legacyOwnerRole String?       @map("ownerRole") @ignore
+  // Keep old DB column mapped to legacy enum so db push does not drop it
+  ownerRoleLegacy LifecycleOwnerRole? @map("ownerRole")
   relativeDueDays Int           // relative to startDate/exitDate depending on type
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -40,9 +56,9 @@ model TaskAssignment {
   dueDate        DateTime
   ownerRole      LifecycleRole @relation("LifecycleRoleTaskAssignments", fields: [ownerRoleId], references: [id])
   ownerRoleId    String
-  // Keep old DB columns visible to prisma db push to avoid data-loss drop warnings on Render
-  legacyOwnerRole String?      @map("ownerRole") @ignore
-  legacyStatus    String?      @map("status") @ignore
+  // Keep old DB columns mapped to legacy enums so db push does not drop them
+  ownerRoleLegacy LifecycleOwnerRole? @map("ownerRole")
+  statusLegacy    TaskStatus?         @map("status")
   notes          String?
   completedAt    DateTime?
   createdAt      DateTime      @default(now())
