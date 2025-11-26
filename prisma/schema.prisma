@@ -134,6 +134,7 @@ model Employee {
   assets             Asset[]              @relation("EmployeeAssets")
   accesses           Access[]             @relation("EmployeeAccesses")
   documents          EmployeeDocument[]
+  reminders          Reminder[]
   lockAll            Boolean              @default(false)
   lockFirstName      Boolean              @default(false)
   lockLastName       Boolean              @default(false)
