@@ -82,24 +82,71 @@ if [ -n "${DATABASE_URL:-}" ]; then
         log "Runtime diff failed. Aborting build."; exit 1; }
       # Sanitize legacy enum/type statements that may not exist anymore
       if [ -s "$rt_dir/migration.sql" ]; then
-        sed -i.bak \
-          -e '/CREATE TYPE\s\+"\?TaskStatus\"\?/Id' \
-          -e '/DROP TYPE\s\+"\?TaskStatus\"\?/Id' \
-          -e '/ALTER TYPE\s\+"\?TaskStatus\"\?/Id' \
-          -e 's/\bTaskStatus\b/TEXT/Ig' \
-          -e '/ADD COLUMN\s\+"status"\s\+TEXT/Id' \
-          -e '/CREATE TYPE\s\+"\?LifecycleOwnerRole\"\?/Id' \
-          -e '/DROP TYPE\s\+"\?LifecycleOwnerRole\"\?/Id' \
-          -e '/ALTER TYPE\s\+"\?LifecycleOwnerRole\"\?/Id' \
-          -e 's/\bLifecycleOwnerRole\b/TEXT/Ig' \
-          -e '/ADD COLUMN\s\+"ownerRole"\s\+LifecycleOwnerRole/Id' \
-          -e '/ADD COLUMN\s\+"ownerRole"\s\+TEXT/Id' \
-          -e '/DROP COLUMN\s\+"ownerRole"/Id' \
-          "$rt_dir/migration.sql" || true
-        rm -f "$rt_dir/migration.sql.bak"
+        # Use Python for robust multi-line SQL sanitization
+        python3 << 'PYEOF' "$rt_dir/migration.sql"
+import sys, re
+
+filepath = sys.argv[1]
+with open(filepath, 'r') as f:
+    content = f.read()
+
+# Patterns to remove entirely (case-insensitive)
+remove_patterns = [
+    r'CREATE\s+TYPE\s+"?TaskStatus"?[^;]*;',
+    r'DROP\s+TYPE\s+"?TaskStatus"?[^;]*;',
+    r'ALTER\s+TYPE\s+"?TaskStatus"?[^;]*;',
+    r'CREATE\s+TYPE\s+"?LifecycleOwnerRole"?[^;]*;',
+    r'DROP\s+TYPE\s+"?LifecycleOwnerRole"?[^;]*;',
+    r'ALTER\s+TYPE\s+"?LifecycleOwnerRole"?[^;]*;',
+    r'DROP\s+INDEX[^;]*"TaskAssignment_employeeId_status_dueDate_idx"[^;]*;',
+]
+for pat in remove_patterns:
+    content = re.sub(pat, '', content, flags=re.IGNORECASE | re.DOTALL)
+
+def clean_alter_table(match):
+    block = match.group(0)
+    skip_ops = [
+        r'DROP\s+COLUMN\s+"status"',
+        r'DROP\s+COLUMN\s+"ownerRole"',
+        r'ADD\s+COLUMN\s+"status"',
+        r'ADD\s+COLUMN\s+"ownerRole"',
+        r'ADD\s+COLUMN\s+"statusLegacy"',
+        r'ADD\s+COLUMN\s+"ownerRoleLegacy"',
+        r'ALTER\s+COLUMN\s+"status"',
+        r'ALTER\s+COLUMN\s+"ownerRole"',
+    ]
+    ops_match = re.search(r'ALTER\s+TABLE\s+"[^"]+"\s*(.*);', block, re.DOTALL | re.IGNORECASE)
+    if not ops_match:
+        return block
+    ops = ops_match.group(1)
+    for skip in skip_ops:
+        ops = re.sub(skip + r'[^,;]*,?\s*', '', ops, flags=re.IGNORECASE)
+    ops = re.sub(r',\s*,', ',', ops)
+    ops = re.sub(r'^\s*,', '', ops)
+    ops = re.sub(r',\s*$', '', ops)
+    ops = ops.strip()
+    if not ops or ops == '':
+        return ''
+    table_match = re.search(r'(ALTER\s+TABLE\s+"[^"]+")', block, re.IGNORECASE)
+    if table_match:
+        return table_match.group(1) + ' ' + ops + ';'
+    return block
+
+content = re.sub(r'ALTER\s+TABLE\s+"[^"]+"\s+[^;]+;', clean_alter_table, content, flags=re.IGNORECASE | re.DOTALL)
+content = re.sub(r'--\s*\w+\s*\n\s*\n', '\n', content)
+content = re.sub(r'\n{3,}', '\n\n', content)
+content = content.strip()
+
+with open(filepath, 'w') as f:
+    f.write(content + '\n' if content else '')
+PYEOF
       fi
       if [ ! -s "$rt_dir/migration.sql" ]; then
         log "No diff produced; continuing."
+        rm -rf "$rt_dir"
+      elif ! grep -qE '^\s*(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE)\s' "$rt_dir/migration.sql" 2>/dev/null; then
+        log "No meaningful schema changes after sanitization; skipping runtime migration."
+        rm -rf "$rt_dir"
       else
         log "Applying runtime migration and marking as applied."
         set +e
@@ -144,27 +191,89 @@ if [ -n "${DATABASE_URL:-}" ]; then
   rt_dir2="prisma/migrations/${ts2}_render_runtime_sync"
   mkdir -p "$rt_dir2"
   npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script > "$rt_dir2/migration.sql" || true
-  # Sanitize legacy enum/type statements in sync migration as well
+  # Sanitize legacy enum/type statements and column changes that should be skipped
   if [ -s "$rt_dir2/migration.sql" ]; then
-    sed -i.bak \
-      -e '/CREATE TYPE\s\+"\?TaskStatus\"\?/Id' \
-      -e '/DROP TYPE\s\+"\?TaskStatus\"\?/Id' \
-      -e '/ALTER TYPE\s\+"\?TaskStatus\"\?/Id' \
-      -e 's/\bTaskStatus\b/TEXT/Ig' \
-      -e '/ADD COLUMN\s\+"status"\s\+TEXT/Id' \
-      -e '/CREATE TYPE\s\+"\?LifecycleOwnerRole\"\?/Id' \
-      -e '/DROP TYPE\s\+"\?LifecycleOwnerRole\"\?/Id' \
-      -e '/ALTER TYPE\s\+"\?LifecycleOwnerRole\"\?/Id' \
-      -e 's/\bLifecycleOwnerRole\b/TEXT/Ig' \
-      -e '/ADD COLUMN\s\+"ownerRole"\s\+LifecycleOwnerRole/Id' \
-      -e '/ADD COLUMN\s\+"ownerRole"\s\+TEXT/Id' \
-      -e '/DROP COLUMN\s\+"ownerRole"/Id' \
-      "$rt_dir2/migration.sql" || true
-    rm -f "$rt_dir2/migration.sql.bak"
+    # Use Python for robust multi-line SQL sanitization
+    python3 << 'PYEOF' "$rt_dir2/migration.sql"
+import sys, re
+
+filepath = sys.argv[1]
+with open(filepath, 'r') as f:
+    content = f.read()
+
+# Patterns to remove entirely (case-insensitive)
+remove_patterns = [
+    r'CREATE\s+TYPE\s+"?TaskStatus"?[^;]*;',
+    r'DROP\s+TYPE\s+"?TaskStatus"?[^;]*;',
+    r'ALTER\s+TYPE\s+"?TaskStatus"?[^;]*;',
+    r'CREATE\s+TYPE\s+"?LifecycleOwnerRole"?[^;]*;',
+    r'DROP\s+TYPE\s+"?LifecycleOwnerRole"?[^;]*;',
+    r'ALTER\s+TYPE\s+"?LifecycleOwnerRole"?[^;]*;',
+    # Drop indexes on legacy columns we want to keep
+    r'DROP\s+INDEX[^;]*"TaskAssignment_employeeId_status_dueDate_idx"[^;]*;',
+]
+for pat in remove_patterns:
+    content = re.sub(pat, '', content, flags=re.IGNORECASE | re.DOTALL)
+
+# Remove ALTER TABLE blocks that only contain operations on legacy columns
+# Match ALTER TABLE ... ; blocks
+def clean_alter_table(match):
+    block = match.group(0)
+    # Check if this ALTER TABLE only has operations we want to skip
+    skip_ops = [
+        r'DROP\s+COLUMN\s+"status"',
+        r'DROP\s+COLUMN\s+"ownerRole"',
+        r'ADD\s+COLUMN\s+"status"',
+        r'ADD\s+COLUMN\s+"ownerRole"',
+        r'ADD\s+COLUMN\s+"statusLegacy"',
+        r'ADD\s+COLUMN\s+"ownerRoleLegacy"',
+        r'ALTER\s+COLUMN\s+"status"',
+        r'ALTER\s+COLUMN\s+"ownerRole"',
+    ]
+    # Extract just the operations part (after ALTER TABLE "name")
+    ops_match = re.search(r'ALTER\s+TABLE\s+"[^"]+"\s*(.*);', block, re.DOTALL | re.IGNORECASE)
+    if not ops_match:
+        return block
+    ops = ops_match.group(1)
+    # Remove skip operations from the ops string
+    for skip in skip_ops:
+        ops = re.sub(skip + r'[^,;]*,?\s*', '', ops, flags=re.IGNORECASE)
+    # Clean up dangling commas and whitespace
+    ops = re.sub(r',\s*,', ',', ops)
+    ops = re.sub(r'^\s*,', '', ops)
+    ops = re.sub(r',\s*$', '', ops)
+    ops = ops.strip()
+    # If nothing left, remove the whole block
+    if not ops or ops == '':
+        return ''
+    # Rebuild the ALTER TABLE statement
+    table_match = re.search(r'(ALTER\s+TABLE\s+"[^"]+")', block, re.IGNORECASE)
+    if table_match:
+        return table_match.group(1) + ' ' + ops + ';'
+    return block
+
+content = re.sub(r'ALTER\s+TABLE\s+"[^"]+"\s+[^;]+;', clean_alter_table, content, flags=re.IGNORECASE | re.DOTALL)
+
+# Remove empty comment blocks
+content = re.sub(r'--\s*\w+\s*\n\s*\n', '\n', content)
+# Clean up multiple blank lines
+content = re.sub(r'\n{3,}', '\n\n', content)
+content = content.strip()
+
+with open(filepath, 'w') as f:
+    f.write(content + '\n' if content else '')
+PYEOF
   fi
+  # Check if there's any meaningful SQL left after sanitization
   if [ -s "$rt_dir2/migration.sql" ]; then
-    log "Additional schema changes found; applying runtime sync migration."
-    npx prisma migrate deploy || { log "migrate deploy failed after runtime sync."; exit 1; }
+    # Check if file only contains whitespace/comments
+    if grep -qE '^\s*(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE)\s' "$rt_dir2/migration.sql" 2>/dev/null; then
+      log "Additional schema changes found; applying runtime sync migration."
+      npx prisma migrate deploy || { log "migrate deploy failed after runtime sync."; exit 1; }
+    else
+      log "No meaningful schema changes after sanitization; skipping runtime sync."
+      rm -rf "$rt_dir2"
+    fi
   else
     rm -rf "$rt_dir2"
   fi
