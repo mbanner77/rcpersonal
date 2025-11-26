@@ -28,6 +28,15 @@ if [ "$STATUS" -eq 0 ]; then
     exit 1
   }
   log "Starting Next.js."
+  (
+    # Lightweight cron: call reminders sender hourly (endpoint de-duplicates per day)
+    while true; do
+      if [ -n "${CRON_SECRET:-}" ]; then
+        curl -sS -X POST -H "x-cron-secret: $CRON_SECRET" "http://localhost:${PORT:-3000}/api/cron/reminders/send" >/dev/null 2>&1 || true
+      fi
+      sleep 3600
+    done
+  ) &
   exec next start
 fi
 
@@ -91,6 +100,14 @@ SQL
     exit 1
   }
   log "Migrations applied after baseline. Starting Next.js."
+  (
+    while true; do
+      if [ -n "${CRON_SECRET:-}" ]; then
+        curl -sS -X POST -H "x-cron-secret: $CRON_SECRET" "http://localhost:${PORT:-3000}/api/cron/reminders/send" >/dev/null 2>&1 || true
+      fi
+      sleep 3600
+    done
+  ) &
   exec next start
 fi
 
