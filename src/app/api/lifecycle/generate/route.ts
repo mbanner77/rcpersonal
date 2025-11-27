@@ -164,6 +164,14 @@ export async function POST(req: Request) {
       continue;
     }
 
+    // Get role key for legacy column (if role was looked up)
+    let roleKey = "HR"; // default
+    if (tpl.role?.key) {
+      roleKey = tpl.role.key;
+    } else if (defaultRole?.key) {
+      roleKey = defaultRole.key;
+    }
+
     try {
       if (overwrite) {
         // Upsert: try update first, then insert if not exists
@@ -181,6 +189,9 @@ export async function POST(req: Request) {
               dueDate: due,
               ownerRole: { connect: { id: roleId } },
               status: { connect: { id: openStatusId } },
+              // Legacy columns for backward compatibility with production DB constraints
+              ownerRoleLegacy: roleKey,
+              statusLegacy: defaultStatus?.key || "OPEN",
             },
           });
           generatedCount++;
@@ -194,6 +205,9 @@ export async function POST(req: Request) {
               dueDate: due,
               ownerRole: { connect: { id: roleId } },
               status: { connect: { id: openStatusId } },
+              // Legacy columns for backward compatibility with production DB constraints
+              ownerRoleLegacy: roleKey,
+              statusLegacy: defaultStatus?.key || "OPEN",
             },
           });
           generatedCount++;
@@ -209,6 +223,9 @@ export async function POST(req: Request) {
               dueDate: due,
               ownerRole: { connect: { id: roleId } },
               status: { connect: { id: openStatusId } },
+              // Legacy columns for backward compatibility with production DB constraints
+              ownerRoleLegacy: roleKey,
+              statusLegacy: defaultStatus?.key || "OPEN",
             },
           });
           generatedCount++;
