@@ -481,7 +481,8 @@ enum ReminderTypeEnum {
   @@map("ReminderType")
 }
 
-model ReminderType {
+// Named ReminderTypeConfig to avoid conflict with existing ReminderType enum in DB
+model ReminderTypeConfig {
   id          String     @id @default(cuid())
   key         String     @unique // e.g. "GEHALT", "CUSTOM_TYPE"
   label       String     // Display name, e.g. "Gehalt", "Sonderbonus"
@@ -498,7 +499,7 @@ model ReminderType {
 model Reminder {
   id            String        @id @default(cuid())
   // Optional until all existing records are migrated
-  reminderType  ReminderType? @relation(fields: [reminderTypeId], references: [id])
+  reminderTypeConfig  ReminderTypeConfig? @relation(fields: [reminderTypeId], references: [id])
   reminderTypeId String?
   // Legacy field - maps to existing "type" column (uses ReminderType enum in DB)
   typeLegacy    ReminderTypeEnum? @map("type")

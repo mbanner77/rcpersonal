@@ -1,8 +1,9 @@
 -- Note: The existing "ReminderType" enum in the database is kept as-is.
 -- The Prisma schema maps it as ReminderTypeEnum with @@map("ReminderType").
+-- The new table is named "ReminderTypeConfig" to avoid conflict with the enum.
 
 -- CreateTable (only if not exists)
-CREATE TABLE IF NOT EXISTS "ReminderType" (
+CREATE TABLE IF NOT EXISTS "ReminderTypeConfig" (
     "id" TEXT NOT NULL,
     "key" TEXT NOT NULL,
     "label" TEXT NOT NULL,
@@ -13,11 +14,11 @@ CREATE TABLE IF NOT EXISTS "ReminderType" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "ReminderType_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ReminderTypeConfig_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex (only if not exists)
-CREATE UNIQUE INDEX IF NOT EXISTS "ReminderType_key_key" ON "ReminderType"("key");
+CREATE UNIQUE INDEX IF NOT EXISTS "ReminderTypeConfig_key_key" ON "ReminderTypeConfig"("key");
 
 -- AddColumn (nullable to allow existing data)
 ALTER TABLE "Reminder" ADD COLUMN IF NOT EXISTS "reminderTypeId" TEXT;
@@ -30,12 +31,12 @@ BEGIN
         WHERE constraint_name = 'Reminder_reminderTypeId_fkey'
     ) THEN
         ALTER TABLE "Reminder" ADD CONSTRAINT "Reminder_reminderTypeId_fkey" 
-        FOREIGN KEY ("reminderTypeId") REFERENCES "ReminderType"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+        FOREIGN KEY ("reminderTypeId") REFERENCES "ReminderTypeConfig"("id") ON DELETE SET NULL ON UPDATE CASCADE;
     END IF;
 END $$;
 
--- Insert default ReminderTypes
-INSERT INTO "ReminderType" ("id", "key", "label", "description", "color", "orderIndex", "active", "createdAt", "updatedAt")
+-- Insert default ReminderTypeConfig entries
+INSERT INTO "ReminderTypeConfig" ("id", "key", "label", "description", "color", "orderIndex", "active", "createdAt", "updatedAt")
 VALUES 
     (gen_random_uuid()::text, 'GEHALT', 'Gehalt', 'Gehaltserhöhungen und -anpassungen', 'emerald', 0, true, NOW(), NOW()),
     (gen_random_uuid()::text, 'MEILENSTEIN', 'Meilenstein', 'Wichtige Ereignisse und Jubiläen', 'blue', 1, true, NOW(), NOW()),
@@ -45,8 +46,8 @@ VALUES
     (gen_random_uuid()::text, 'WEIHNACHTSGELD', 'Weihnachtsgeld', 'Jährliche Weihnachtsgeldzahlung', 'red', 5, true, NOW(), NOW())
 ON CONFLICT ("key") DO NOTHING;
 
--- Update existing Reminders to link to ReminderType based on legacy "type" column
+-- Update existing Reminders to link to ReminderTypeConfig based on legacy "type" column
 UPDATE "Reminder" r
 SET "reminderTypeId" = rt.id
-FROM "ReminderType" rt
+FROM "ReminderTypeConfig" rt
 WHERE r."type"::text = rt."key" AND r."reminderTypeId" IS NULL;

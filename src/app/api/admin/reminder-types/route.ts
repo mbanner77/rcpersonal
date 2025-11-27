@@ -3,6 +3,7 @@ import { requireUser, hasRole } from "@/lib/auth";
 import { z } from "zod";
 
 // Type-safe access to new model (will be properly typed after migration)
+// Model is named reminderTypeConfig in Prisma (table: ReminderTypeConfig)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const prisma = db as any;
 
@@ -24,7 +25,7 @@ export async function GET() {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const types = await prisma.reminderType.findMany({
+    const types = await prisma.reminderTypeConfig.findMany({
       orderBy: [{ orderIndex: "asc" }, { label: "asc" }],
     });
 
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
     const { key, label, description, color, orderIndex, active } = parsed.data;
 
     // Check if key already exists
-    const existing = await prisma.reminderType.findUnique({ where: { key } });
+    const existing = await prisma.reminderTypeConfig.findUnique({ where: { key } });
     if (existing) {
       return Response.json({ error: "Ein Typ mit diesem Schlüssel existiert bereits" }, { status: 409 });
     }
@@ -60,11 +61,11 @@ export async function POST(req: Request) {
     // Get next orderIndex if not provided
     let order = orderIndex;
     if (order === undefined) {
-      const maxOrder = await prisma.reminderType.aggregate({ _max: { orderIndex: true } });
+      const maxOrder = await prisma.reminderTypeConfig.aggregate({ _max: { orderIndex: true } });
       order = (maxOrder._max.orderIndex ?? -1) + 1;
     }
 
-    const newType = await prisma.reminderType.create({
+    const newType = await prisma.reminderTypeConfig.create({
       data: {
         key,
         label,
@@ -103,20 +104,20 @@ export async function PUT(req: Request) {
     }
 
     // Check if type exists
-    const existing = await prisma.reminderType.findUnique({ where: { id } });
+    const existing = await prisma.reminderTypeConfig.findUnique({ where: { id } });
     if (!existing) {
       return Response.json({ error: "Typ nicht gefunden" }, { status: 404 });
     }
 
     // If key is being changed, check for duplicates
     if (parsed.data.key && parsed.data.key !== existing.key) {
-      const duplicate = await prisma.reminderType.findUnique({ where: { key: parsed.data.key } });
+      const duplicate = await prisma.reminderTypeConfig.findUnique({ where: { key: parsed.data.key } });
       if (duplicate) {
         return Response.json({ error: "Ein Typ mit diesem Schlüssel existiert bereits" }, { status: 409 });
       }
     }
 
-    const updated = await prisma.reminderType.update({
+    const updated = await prisma.reminderTypeConfig.update({
       where: { id },
       data: parsed.data,
     });
@@ -151,7 +152,7 @@ export async function DELETE(req: Request) {
       }, { status: 409 });
     }
 
-    await prisma.reminderType.delete({ where: { id } });
+    await prisma.reminderTypeConfig.delete({ where: { id } });
 
     return Response.json({ success: true });
   } catch (error) {
