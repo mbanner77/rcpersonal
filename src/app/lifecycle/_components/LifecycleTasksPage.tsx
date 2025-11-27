@@ -32,6 +32,8 @@ type Props = {
 
 type StatusFilter = string | "ALL"; // statusId or ALL
 type OwnerFilter = string | "ALL"; // ownerRoleId or ALL
+type TemplateFilter = string | "ALL"; // templateId or ALL
+type Template = { id: string; title: string };
 
 const statusClassesByDone: Record<"done" | "open", string> = {
   done: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -67,6 +69,7 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("ALL");
+  const [templateFilter, setTemplateFilter] = useState<TemplateFilter>("ALL");
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,22 +149,10 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     if (showGeneratePanel) void loadEmployees();
   }, [showGeneratePanel, loadEmployees]);
 
-  const statistics = useMemo(() => {
-    const byStatus = new Map<string, number>();
-    let total = 0;
-    let overdue = 0;
-    for (const t of tasks) {
-      total++;
-      if (t.isOverdue) overdue++;
-      const key = t.status?.label ?? "(kein Status)";
-      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
-    }
-    return { total, overdue, byStatus };
-  }, [tasks]);
-
   const resetFilters = () => {
     setStatusFilter("ALL");
     setOwnerFilter("ALL");
+    setTemplateFilter("ALL");
     setAppliedSearch("");
     setSearchInput("");
   };
@@ -241,6 +232,32 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     for (const t of tasks) if (t.ownerRole && !seen.has(t.ownerRole.id)) seen.set(t.ownerRole.id, t.ownerRole);
     return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [tasks]);
+
+  const distinctTemplates: Template[] = useMemo(() => {
+    const seen = new Map<string, Template>();
+    for (const t of tasks) if (t.template && !seen.has(t.template.id)) seen.set(t.template.id, { id: t.template.id, title: t.template.title });
+    return Array.from(seen.values()).sort((a, b) => a.title.localeCompare(b.title));
+  }, [tasks]);
+
+  // Filter tasks by template locally
+  const filteredTasks = useMemo(() => {
+    if (templateFilter === "ALL") return tasks;
+    return tasks.filter(t => t.template?.id === templateFilter);
+  }, [tasks, templateFilter]);
+
+  // Statistics based on filtered tasks
+  const statistics = useMemo(() => {
+    const byStatus = new Map<string, number>();
+    let total = 0;
+    let overdue = 0;
+    for (const t of filteredTasks) {
+      total++;
+      if (t.isOverdue) overdue++;
+      const key = t.status?.label ?? "(kein Status)";
+      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
+    }
+    return { total, overdue, byStatus };
+  }, [filteredTasks]);
 
   return (
     <div className="space-y-6">
@@ -346,7 +363,7 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
       </div>
 
       <form
-        className="grid gap-4 rounded border border-zinc-200 bg-white p-4 text-sm md:grid-cols-4"
+        className="grid gap-4 rounded border border-zinc-200 bg-white p-4 text-sm md:grid-cols-5"
         onSubmit={(event) => {
           event.preventDefault();
           setAppliedSearch(searchInput.trim());
@@ -382,6 +399,21 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
             ))}
           </select>
         </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-zinc-600">Vorlage</span>
+          <select
+            className="rounded border px-3 py-2"
+            value={templateFilter}
+            onChange={(event) => setTemplateFilter(event.target.value as TemplateFilter)}
+          >
+            <option value="ALL">Alle Vorlagen</option>
+            {distinctTemplates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="flex flex-col gap-1 md:col-span-2">
           <span className="text-xs font-medium text-zinc-600">Suche (Mitarbeiter oder Aufgabe)</span>
           <div className="flex gap-2">
@@ -405,7 +437,7 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
       {loading && <div className="text-sm text-zinc-500">Lade Aufgaben…</div>}
 
       <div className="space-y-3">
-        {tasks.map((task) => {
+        {filteredTasks.map((task) => {
           const isEditing = editingId === task.id;
           const dueInfo = formatDueInfo(task);
           return (
