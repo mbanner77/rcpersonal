@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/hooks/useSession";
+import Dialog, { DialogFooter, FormField, inputClassName, selectClassName } from "@/components/Dialog";
 
 type UserRole = "ADMIN" | "HR" | "PEOPLE_MANAGER" | "UNIT_LEAD" | "TEAM_LEAD";
 
@@ -317,99 +318,82 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {dialogMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-800">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                {dialogMode === "create" ? "Neuen Benutzer anlegen" : "Benutzer bearbeiten"}
-              </h2>
-              <button type="button" onClick={closeDialog} className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="space-y-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">E-Mail</span>
-                <input
-                  type="email"
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  placeholder="name@firma.de"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Name</span>
-                <input
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  placeholder="Vor- und Nachname"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                />
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Rolle</span>
-                  <select
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                    value={form.role}
-                    onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as FormState["role"] }))}
-                  >
-                    <option value="ADMIN">Admin</option>
-                    <option value="HR">HR</option>
-                    <option value="PEOPLE_MANAGER">People Manager</option>
-                    <option value="UNIT_LEAD">Unit-Leiter</option>
-                    <option value="TEAM_LEAD">Team-Leiter</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Unit</span>
-                  <select
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                    value={form.unitId ?? ""}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, unitId: e.target.value ? e.target.value : null }))
-                    }
-                  >
-                    <option value="">– keine –</option>
-                    {units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Passwort {dialogMode === "edit" && <span className="font-normal text-zinc-400">(leer = unverändert)</span>}
-                </span>
-                <input
-                  type="password"
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                />
-              </label>
-            </div>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button type="button" onClick={closeDialog} className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={dialogMode === "create" ? submitCreate : submitUpdate}
-                disabled={saving}
-                className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+      <Dialog
+        open={!!dialogMode}
+        onClose={closeDialog}
+        title={dialogMode === "create" ? "Neuen Benutzer anlegen" : "Benutzer bearbeiten"}
+        subtitle={dialogMode === "create" ? "Erstellen Sie einen neuen Benutzer mit Zugangsdaten" : "Passen Sie die Benutzerinformationen an"}
+        icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+        iconColor="purple"
+        footer={
+          <DialogFooter
+            onCancel={closeDialog}
+            onSave={dialogMode === "create" ? submitCreate : submitUpdate}
+            saving={saving}
+            saveText={dialogMode === "create" ? "Anlegen" : "Speichern"}
+          />
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="E-Mail" required>
+            <input
+              type="email"
+              className={inputClassName}
+              placeholder="name@firma.de"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            />
+          </FormField>
+          <FormField label="Name">
+            <input
+              className={inputClassName}
+              placeholder="Vor- und Nachname"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Rolle">
+              <select
+                className={selectClassName}
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as FormState["role"] }))}
               >
-                {saving ? "Speichern…" : dialogMode === "create" ? "Anlegen" : "Speichern"}
-              </button>
-            </div>
+                <option value="ADMIN">Admin</option>
+                <option value="HR">HR</option>
+                <option value="PEOPLE_MANAGER">People Manager</option>
+                <option value="UNIT_LEAD">Unit-Leiter</option>
+                <option value="TEAM_LEAD">Team-Leiter</option>
+              </select>
+            </FormField>
+            <FormField label="Unit">
+              <select
+                className={selectClassName}
+                value={form.unitId ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, unitId: e.target.value ? e.target.value : null }))
+                }
+              >
+                <option value="">– keine –</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
           </div>
+          <FormField label="Passwort" hint={dialogMode === "edit" ? "leer = unverändert" : undefined}>
+            <input
+              type="password"
+              className={inputClassName}
+              placeholder="••••••••"
+              value={form.password}
+              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            />
+          </FormField>
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }

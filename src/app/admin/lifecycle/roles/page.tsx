@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/hooks/useSession";
+import Dialog, { DialogFooter, FormField, inputClassName, selectClassName, textareaClassName, checkboxContainerClassName, checkboxClassName } from "@/components/Dialog";
 
 type Role = { id: string; key: string; label: string; description?: string | null; type?: "ONBOARDING" | "OFFBOARDING" | null; orderIndex: number; active: boolean };
 
@@ -148,54 +149,49 @@ export default function RolesPage() {
         )}
       </div>
 
-      {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-800">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{form.id ? "Rolle bearbeiten" : "Neue Rolle"}</h2>
-              <button onClick={closeDialog} className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="grid gap-4 text-sm">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Schlüssel</span>
-                <input className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="z.B. HR_MANAGER" value={form.key} onChange={(e) => setForm((p) => ({ ...p, key: e.target.value }))} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Bezeichnung</span>
-                <input className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="z.B. HR Manager" value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Beschreibung</span>
-                <textarea className="min-h-[80px] rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="Optionale Beschreibung..." value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Typ</span>
-                  <select className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as FormState["type"] }))}>
-                    <option value="">Alle</option>
-                    <option value="ONBOARDING">Onboarding</option>
-                    <option value="OFFBOARDING">Offboarding</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Reihenfolge</span>
-                  <input type="number" className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.orderIndex} onChange={(e) => setForm((p) => ({ ...p, orderIndex: e.target.value }))} />
-                </label>
-              </div>
-              <label className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
-                <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-black focus:ring-black dark:border-zinc-600 dark:bg-zinc-700" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Rolle ist aktiv</span>
-              </label>
-            </div>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button onClick={closeDialog} className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">Abbrechen</button>
-              <button onClick={submit} disabled={saving} className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200">{saving ? "Speichern…" : "Speichern"}</button>
-            </div>
+      <Dialog
+        open={dialogOpen}
+        onClose={closeDialog}
+        title={form.id ? "Rolle bearbeiten" : "Neue Rolle"}
+        subtitle="Definieren Sie eine Rolle für Lifecycle-Aufgaben"
+        icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+        iconColor="emerald"
+        footer={
+          <DialogFooter
+            onCancel={closeDialog}
+            onSave={submit}
+            saving={saving}
+          />
+        }
+      >
+        <div className="grid gap-4">
+          <FormField label="Schlüssel" required>
+            <input className={inputClassName} placeholder="z.B. HR_MANAGER" value={form.key} onChange={(e) => setForm((p) => ({ ...p, key: e.target.value }))} />
+          </FormField>
+          <FormField label="Bezeichnung" required>
+            <input className={inputClassName} placeholder="z.B. HR Manager" value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} />
+          </FormField>
+          <FormField label="Beschreibung">
+            <textarea className={textareaClassName} placeholder="Optionale Beschreibung..." value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Typ">
+              <select className={selectClassName} value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as FormState["type"] }))}>
+                <option value="">Alle</option>
+                <option value="ONBOARDING">Onboarding</option>
+                <option value="OFFBOARDING">Offboarding</option>
+              </select>
+            </FormField>
+            <FormField label="Reihenfolge">
+              <input type="number" className={inputClassName} value={form.orderIndex} onChange={(e) => setForm((p) => ({ ...p, orderIndex: e.target.value }))} />
+            </FormField>
           </div>
+          <label className={checkboxContainerClassName}>
+            <input type="checkbox" className={checkboxClassName} checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
+            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Rolle ist aktiv</span>
+          </label>
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }

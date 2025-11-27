@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/hooks/useSession";
+import Dialog, { DialogFooter, FormField, inputClassName, selectClassName, textareaClassName, checkboxContainerClassName, checkboxClassName } from "@/components/Dialog";
 
 type TemplateType = "ONBOARDING" | "OFFBOARDING";
 
@@ -429,96 +430,82 @@ export default function AdminLifecyclePage() {
         </div>
       )}
 
-      {dialogMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-800">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                {dialogMode === "create" ? "Neue Lifecycle-Vorlage" : "Vorlage bearbeiten"}
-              </h2>
-              <button type="button" onClick={closeDialog} className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="grid gap-4 text-sm md:grid-cols-2">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Titel</span>
-                <input
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  value={form.title}
-                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Typ</span>
-                <select
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  value={form.type}
-                  onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as TemplateType }))}
-                >
-                  <option value="ONBOARDING">Onboarding</option>
-                  <option value="OFFBOARDING">Offboarding</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Owner-Rolle</span>
-                <select
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  value={form.ownerRoleId}
-                  onChange={(event) => setForm((prev) => ({ ...prev, ownerRoleId: event.target.value }))}
-                >
-                  <option value="">Bitte wählen…</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Relative Fälligkeit (Tage)</span>
-                <input
-                  type="number"
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  value={form.relativeDueDays}
-                  onChange={(event) => setForm((prev) => ({ ...prev, relativeDueDays: event.target.value }))}
-                />
-              </label>
-              <label className="md:col-span-2 flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Beschreibung</span>
-                <textarea
-                  className="min-h-[100px] rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  value={form.description}
-                  onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-                  placeholder="Optional: detaillierte Beschreibung oder Checkliste"
-                />
-              </label>
-              <label className="col-span-2 flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-zinc-300 text-black focus:ring-black dark:border-zinc-600 dark:bg-zinc-700"
-                  checked={form.active}
-                  onChange={(event) => setForm((prev) => ({ ...prev, active: event.target.checked }))}
-                />
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Vorlage aktiv</span>
-              </label>
-            </div>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button type="button" onClick={closeDialog} className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={dialogMode === "create" ? submitCreate : submitUpdate}
-                disabled={saving}
-                className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-              >
-                {saving ? "Speichern…" : dialogMode === "create" ? "Anlegen" : "Speichern"}
-              </button>
-            </div>
-          </div>
+      <Dialog
+        open={!!dialogMode}
+        onClose={closeDialog}
+        title={dialogMode === "create" ? "Neue Lifecycle-Vorlage" : "Vorlage bearbeiten"}
+        subtitle="Erstellen oder bearbeiten Sie eine Vorlage für Onboarding/Offboarding"
+        size="xl"
+        icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}
+        iconColor="indigo"
+        footer={
+          <DialogFooter
+            onCancel={closeDialog}
+            onSave={dialogMode === "create" ? submitCreate : submitUpdate}
+            saving={saving}
+            saveText={dialogMode === "create" ? "Anlegen" : "Speichern"}
+          />
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField label="Titel" required>
+            <input
+              className={inputClassName}
+              value={form.title}
+              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+            />
+          </FormField>
+          <FormField label="Typ">
+            <select
+              className={selectClassName}
+              value={form.type}
+              onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as TemplateType }))}
+            >
+              <option value="ONBOARDING">Onboarding</option>
+              <option value="OFFBOARDING">Offboarding</option>
+            </select>
+          </FormField>
+          <FormField label="Owner-Rolle">
+            <select
+              className={selectClassName}
+              value={form.ownerRoleId}
+              onChange={(event) => setForm((prev) => ({ ...prev, ownerRoleId: event.target.value }))}
+            >
+              <option value="">Bitte wählen…</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Relative Fälligkeit (Tage)">
+            <input
+              type="number"
+              className={inputClassName}
+              value={form.relativeDueDays}
+              onChange={(event) => setForm((prev) => ({ ...prev, relativeDueDays: event.target.value }))}
+            />
+          </FormField>
+          <FormField label="Beschreibung" className="md:col-span-2">
+            <textarea
+              className={textareaClassName}
+              value={form.description}
+              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+              placeholder="Optional: detaillierte Beschreibung oder Checkliste"
+            />
+          </FormField>
+          <label className={`md:col-span-2 ${checkboxContainerClassName}`}>
+            <input
+              type="checkbox"
+              className={checkboxClassName}
+              checked={form.active}
+              onChange={(event) => setForm((prev) => ({ ...prev, active: event.target.checked }))}
+            />
+            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Vorlage aktiv</span>
+          </label>
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/hooks/useSession";
+import Dialog, { DialogFooter, FormField, inputClassName, selectClassName, textareaClassName, checkboxClassName } from "@/components/Dialog";
 
 type Status = { id: string; key: string; label: string; description?: string | null; type?: "ONBOARDING" | "OFFBOARDING" | null; orderIndex: number; active: boolean; isDone: boolean; isDefault: boolean };
 
@@ -158,64 +159,59 @@ export default function StatusesPage() {
         )}
       </div>
 
-      {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-800">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{form.id ? "Status bearbeiten" : "Neuer Status"}</h2>
-              <button onClick={closeDialog} className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="grid gap-4 text-sm">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Schlüssel</span>
-                <input className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="z.B. OPEN" value={form.key} onChange={(e) => setForm((p) => ({ ...p, key: e.target.value }))} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Bezeichnung</span>
-                <input className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="z.B. Offen" value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Beschreibung</span>
-                <textarea className="min-h-[80px] rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" placeholder="Optionale Beschreibung..." value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Typ</span>
-                  <select className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as FormState["type"] }))}>
-                    <option value="">Alle</option>
-                    <option value="ONBOARDING">Onboarding</option>
-                    <option value="OFFBOARDING">Offboarding</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Reihenfolge</span>
-                  <input type="number" className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 transition focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:focus:border-white dark:focus:ring-white/10" value={form.orderIndex} onChange={(e) => setForm((p) => ({ ...p, orderIndex: e.target.value }))} />
-                </label>
-              </div>
-              <div className="grid gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
-                <label className="flex items-center gap-3">
-                  <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-black focus:ring-black dark:border-zinc-600 dark:bg-zinc-700" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Status ist aktiv</span>
-                </label>
-                <label className="flex items-center gap-3">
-                  <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 dark:border-zinc-600 dark:bg-zinc-700" checked={form.isDone} onChange={(e) => setForm((p) => ({ ...p, isDone: e.target.checked }))} />
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Markiert Aufgabe als erledigt</span>
-                </label>
-                <label className="flex items-center gap-3">
-                  <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-700" checked={form.isDefault} onChange={(e) => setForm((p) => ({ ...p, isDefault: e.target.checked }))} />
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Standardstatus für neue Aufgaben</span>
-                </label>
-              </div>
-            </div>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button onClick={closeDialog} className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">Abbrechen</button>
-              <button onClick={submit} disabled={saving} className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200">{saving ? "Speichern…" : "Speichern"}</button>
-            </div>
+      <Dialog
+        open={dialogOpen}
+        onClose={closeDialog}
+        title={form.id ? "Status bearbeiten" : "Neuer Status"}
+        subtitle="Definieren Sie einen Status für Lifecycle-Aufgaben"
+        icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        iconColor="amber"
+        footer={
+          <DialogFooter
+            onCancel={closeDialog}
+            onSave={submit}
+            saving={saving}
+          />
+        }
+      >
+        <div className="grid gap-4">
+          <FormField label="Schlüssel" required>
+            <input className={inputClassName} placeholder="z.B. OPEN" value={form.key} onChange={(e) => setForm((p) => ({ ...p, key: e.target.value }))} />
+          </FormField>
+          <FormField label="Bezeichnung" required>
+            <input className={inputClassName} placeholder="z.B. Offen" value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} />
+          </FormField>
+          <FormField label="Beschreibung">
+            <textarea className={textareaClassName} placeholder="Optionale Beschreibung..." value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Typ">
+              <select className={selectClassName} value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as FormState["type"] }))}>
+                <option value="">Alle</option>
+                <option value="ONBOARDING">Onboarding</option>
+                <option value="OFFBOARDING">Offboarding</option>
+              </select>
+            </FormField>
+            <FormField label="Reihenfolge">
+              <input type="number" className={inputClassName} value={form.orderIndex} onChange={(e) => setForm((p) => ({ ...p, orderIndex: e.target.value }))} />
+            </FormField>
+          </div>
+          <div className="grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className={checkboxClassName} checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Status ist aktiv</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 dark:border-zinc-600 dark:bg-zinc-700" checked={form.isDone} onChange={(e) => setForm((p) => ({ ...p, isDone: e.target.checked }))} />
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Markiert Aufgabe als erledigt</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-700" checked={form.isDefault} onChange={(e) => setForm((p) => ({ ...p, isDefault: e.target.checked }))} />
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Standardstatus für neue Aufgaben</span>
+            </label>
           </div>
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }
