@@ -25,6 +25,7 @@ export async function POST(req: Request) {
   const { reminderId } = parsed.data;
 
   // Load the reminder with all related data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reminder = await db.reminder.findUnique({
     where: { id: reminderId },
     include: {
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
       schedules: true,
       recipients: true,
     },
-  });
+  }) as any;
 
   if (!reminder) {
     return Response.json({ error: "Reminder not found" }, { status: 404 });
@@ -43,15 +44,15 @@ export async function POST(req: Request) {
   }
 
   const due = new Date(reminder.dueDate);
-  const subject = `Erinnerung: ${reminder.type} – ${reminder.employee?.lastName ?? ""}, ${reminder.employee?.firstName ?? ""} – ${formatDate(due)}`;
+  const subject = `Erinnerung: ${reminder.typeLegacy} – ${reminder.employee?.lastName ?? ""}, ${reminder.employee?.firstName ?? ""} – ${formatDate(due)}`;
   
   // Build schedule info for the email
   const scheduleInfo = reminder.schedules.length > 0
-    ? reminder.schedules.map(s => `${s.label} (${s.daysBefore} Tage vorher${s.timeOfDay ? `, ${s.timeOfDay} Uhr` : ""})`).join(", ")
+    ? reminder.schedules.map((s: { label: string; daysBefore: number; timeOfDay: string | null }) => `${s.label} (${s.daysBefore} Tage vorher${s.timeOfDay ? `, ${s.timeOfDay} Uhr` : ""})`).join(", ")
     : "Manuell gesendet";
 
   const html = `
-    <p><strong>Erinnerung:</strong> ${reminder.type}</p>
+    <p><strong>Erinnerung:</strong> ${reminder.typeLegacy}</p>
     ${reminder.description ? `<p>${reminder.description}</p>` : ""}
     <p><strong>Berechtigter:</strong> ${reminder.employee?.lastName ?? ""}, ${reminder.employee?.firstName ?? ""}</p>
     <p><strong>Fälligkeit:</strong> ${formatDate(due)}</p>
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
   return Response.json({ 
     ok: true, 
     sent, 
-    recipients: reminder.recipients.map(r => r.email),
+    recipients: reminder.recipients.map((r: { email: string }) => r.email),
     errors: errors.length > 0 ? errors : undefined,
   });
 }
