@@ -154,3 +154,22 @@ export async function PATCH(req: Request) {
   });
   return Response.json(normalizeTask(updated));
 }
+
+const deleteSchema = z.object({
+  id: z.string().cuid(),
+});
+
+export async function DELETE(req: Request) {
+  await requireUser();
+  const parsed = deleteSchema.safeParse(await req.json());
+  if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
+  const { id } = parsed.data;
+
+  try {
+    await (db as any)["taskAssignment"].delete({ where: { id } });
+    return Response.json({ success: true, id });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "unknown error";
+    return Response.json({ error: msg }, { status: 500 });
+  }
+}

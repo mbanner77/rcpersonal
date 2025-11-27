@@ -77,6 +77,7 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   const [editDueDate, setEditDueDate] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [generating, setGenerating] = useState(false);
@@ -221,12 +222,38 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     }
   };
 
+  // Delete a task
+  const deleteTask = async (id: string) => {
+    if (!confirm("Aufgabe wirklich löschen?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/lifecycle/tasks`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      setTasks((current) => current.filter((task) => task.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Aufgabe konnte nicht gelöscht werden");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   // Ableitungen für Filter/Buttons
   const distinctStatuses: Status[] = useMemo(() => {
     const seen = new Map<string, Status>();
     for (const t of tasks) if (t.status && !seen.has(t.status.id)) seen.set(t.status.id, t.status);
     return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [tasks]);
+
+  // Find the "done" status for the "Mark as done" button
+  const doneStatus = useMemo(() => {
+    return distinctStatuses.find(s => s.isDone) ?? null;
+  }, [distinctStatuses]);
   const distinctRoles: Role[] = useMemo(() => {
     const seen = new Map<string, Role>();
     for (const t of tasks) if (t.ownerRole && !seen.has(t.ownerRole.id)) seen.set(t.ownerRole.id, t.ownerRole);
@@ -488,25 +515,45 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
                       {task.status.label}
                     </span>
                   )}
-                  {distinctStatuses.map((s) => (
+                  {/* Mark as Done button - only show if task is not done and doneStatus exists */}
+                  {doneStatus && !task.status?.isDone && (
                     <button
-                      key={s.id}
                       type="button"
-                      className={`rounded border px-2 py-1 transition hover:bg-zinc-100 ${
-                        task.status?.id === s.id ? "border-zinc-400" : "border-zinc-200"
-                      }`}
-                      onClick={() => updateStatus(task.id, s.id)}
+                      className="rounded bg-emerald-600 px-3 py-1.5 text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                      onClick={() => updateStatus(task.id, doneStatus.id)}
                       disabled={statusUpdatingId === task.id}
                     >
-                      {s.label}
+                      {statusUpdatingId === task.id ? "…" : "✓ Erledigt"}
                     </button>
-                  ))}
+                  )}
+                  {/* Status dropdown for other status changes */}
+                  <select
+                    className="rounded border border-zinc-200 px-2 py-1.5 text-xs"
+                    value={task.status?.id ?? ""}
+                    onChange={(e) => e.target.value && updateStatus(task.id, e.target.value)}
+                    disabled={statusUpdatingId === task.id}
+                  >
+                    <option value="" disabled>Status ändern...</option>
+                    {distinctStatuses.map((s) => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
+                  </select>
                   <button
                     type="button"
-                    className="rounded border px-2 py-1 hover:bg-zinc-100"
+                    className="rounded border px-2 py-1.5 hover:bg-zinc-100"
                     onClick={() => (isEditing ? cancelEdit() : beginEdit(task))}
                   >
                     {isEditing ? "Abbrechen" : "Bearbeiten"}
+                  </button>
+                  {/* Delete button */}
+                  <button
+                    type="button"
+                    className="rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50"
+                    onClick={() => deleteTask(task.id)}
+                    disabled={deletingId === task.id}
+                    title="Aufgabe löschen"
+                  >
+                    {deletingId === task.id ? "…" : "🗑"}
                   </button>
                 </div>
               </div>
