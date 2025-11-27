@@ -86,6 +86,26 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   const [generating, setGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState<string | null>(null);
   const [showGeneratePanel, setShowGeneratePanel] = useState(false);
+  const [allStatuses, setAllStatuses] = useState<Status[]>([]);
+
+  // Load all available statuses on mount
+  const loadStatuses = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/lifecycle/statuses");
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setAllStatuses(list);
+      }
+    } catch (err) {
+      console.error("Failed to load statuses:", err);
+    }
+  }, []);
+
+  // Load statuses on mount
+  useEffect(() => {
+    void loadStatuses();
+  }, [loadStatuses]);
 
   // Load employees and templates for the generate panel
   const loadEmployeesAndTemplates = useCallback(async () => {
@@ -269,10 +289,10 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [tasks]);
 
-  // Find the "done" status for the "Mark as done" button
+  // Find the "done" status for the "Mark as done" button (use allStatuses to always find it)
   const doneStatus = useMemo(() => {
-    return distinctStatuses.find(s => s.isDone) ?? null;
-  }, [distinctStatuses]);
+    return allStatuses.find(s => s.isDone) ?? null;
+  }, [allStatuses]);
   const distinctRoles: Role[] = useMemo(() => {
     const seen = new Map<string, Role>();
     for (const t of tasks) if (t.ownerRole && !seen.has(t.ownerRole.id)) seen.set(t.ownerRole.id, t.ownerRole);
@@ -568,7 +588,7 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
                     disabled={statusUpdatingId === task.id}
                   >
                     <option value="" disabled>Status ändern...</option>
-                    {distinctStatuses.map((s) => (
+                    {allStatuses.map((s) => (
                       <option key={s.id} value={s.id}>{s.label}</option>
                     ))}
                   </select>
