@@ -27,15 +27,24 @@ function ensureAdmin(user: SessionUser) {
   if (user.role !== "ADMIN") throw new Response("Forbidden", { status: 403 });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await requireUser();
     ensureAdmin(user);
+
+    // Parse optional type filter from query params
+    const url = new URL(req.url);
+    const typeFilter = url.searchParams.get("type");
+    const whereClause: { type?: string } = {};
+    if (typeFilter && (typeFilter === "ONBOARDING" || typeFilter === "OFFBOARDING")) {
+      whereClause.type = typeFilter;
+    }
     
     // Check if taskTemplate table exists
     try {
       // Try with role include first (using select to exclude legacy ownerRole field)
       const templates = await (db as any)["taskTemplate"].findMany({
+        where: whereClause,
         orderBy: [{ type: "asc" }, { title: "asc" }],
         select: {
           id: true,
@@ -60,6 +69,7 @@ export async function GET() {
       // Relation might not exist yet, try without include
       try {
         const templates = await (db as any)["taskTemplate"].findMany({
+          where: whereClause,
           orderBy: [{ type: "asc" }, { title: "asc" }],
           select: {
             id: true,
