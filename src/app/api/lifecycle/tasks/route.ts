@@ -94,7 +94,14 @@ export async function GET(req: Request) {
     const tasks = await (db as any)["taskAssignment"].findMany({
       where,
       orderBy: [{ dueDate: "asc" }],
-      include: {
+      select: {
+        id: true,
+        type: true,
+        dueDate: true,
+        notes: true,
+        completedAt: true,
+        createdAt: true,
+        updatedAt: true,
         employee: { select: { id: true, firstName: true, lastName: true, email: true } },
         template: { select: { id: true, title: true, type: true } },
         ownerRole: { select: { id: true, key: true, label: true } },
@@ -128,6 +135,22 @@ export async function PATCH(req: Request) {
   if (notes !== undefined) data.notes = notes ?? null;
   if (dueDate !== undefined) data.dueDate = new Date(dueDate);
 
-  const updated = await (db as any)["taskAssignment"].update({ where: { id }, data, include: { ownerRole: true, status: true, employee: true, template: true } });
+  const updated = await (db as any)["taskAssignment"].update({
+    where: { id },
+    data,
+    select: {
+      id: true,
+      type: true,
+      dueDate: true,
+      notes: true,
+      completedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      employee: { select: { id: true, firstName: true, lastName: true, email: true } },
+      template: { select: { id: true, title: true, type: true } },
+      ownerRole: { select: { id: true, key: true, label: true } },
+      status: { select: { id: true, key: true, label: true, isDone: true } },
+    },
+  });
   return Response.json(normalizeTask(updated));
 }
