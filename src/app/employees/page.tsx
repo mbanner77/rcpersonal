@@ -160,129 +160,292 @@ export default function EmployeesPage() {
   }, [filtered, currentPage]);
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Mitarbeiter</h1>
-        <p className="text-zinc-600 mt-2">Excel-Import (.xlsx) – Spalten: Name, Vorname | Nachname | Eintrittsdatum | Geburtstag</p>
-      </div>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3 w-full max-w-lg" encType="multipart/form-data">
-        <input type="file" name="file" accept=".xlsx" className="border rounded p-2" />
-        <button disabled={busy} className="rounded bg-black text-white px-4 py-2 disabled:opacity-50">
-          {busy ? "Import läuft …" : "Import starten"}
-        </button>
-      </form>
-      <div className="flex flex-wrap items-center gap-3">
-        <button onClick={load} className="rounded border px-3 py-1">Liste neu laden</button>
-        <a href="/api/template" className="rounded border px-3 py-1">Excel-Vorlage laden</a>
-        <a href="/api/employees/export.csv" className="rounded border px-3 py-1">Export CSV</a>
-        <a href="/api/employees/export.xlsx" className="rounded border px-3 py-1">Export XLSX</a>
-        <button onClick={() => setUnitDialogOpen(true)} className="rounded border px-3 py-1">Units verwalten</button>
-        <input
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-          placeholder="Suche (Name/Email)"
-          className="border rounded p-2 flex-1 min-w-[220px]"
-        />
-        {loading && <span className="text-sm text-zinc-600">Lade…</span>}
-        {unitsLoading && <span className="text-sm text-zinc-600">Units werden geladen…</span>}
-      </div>
-      {status && <p className="text-sm text-zinc-700">{status}</p>}
-
-      {items && filtered && (
-        <div className="overflow-auto">
-          <table className="min-w-[800px] w-full text-sm">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="p-2">Nachname</th>
-                <th className="p-2">Vorname</th>
-                <th className="p-2">Email</th>
-                <th className="p-2">Eintritt</th>
-                <th className="p-2">Geburtstag</th>
-                <th className="p-2">Unit</th>
-                <th className="p-2">Locks</th>
-                <th className="p-2">Aktion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map((it) => (
-                <tr key={it.id} className="border-b">
-                  <td className="p-2">
-                    <input className="border rounded p-1 w-full" value={it.lastName ?? ""} onChange={(e) => onFieldChange(it.id, "lastName", e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <input className="border rounded p-1 w-full" value={it.firstName ?? ""} onChange={(e) => onFieldChange(it.id, "firstName", e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <input className="border rounded p-1 w-full" value={it.email ?? ""} onChange={(e) => onFieldChange(it.id, "email", e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <input type="date" className="border rounded p-1" value={it.startDate ? String(it.startDate).slice(0,10) : ""} onChange={(e) => onFieldChange(it.id, "startDate", e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <input type="date" className="border rounded p-1" value={it.birthDate ? String(it.birthDate).slice(0,10) : ""} onChange={(e) => onFieldChange(it.id, "birthDate", e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <select
-                      className="border rounded p-1 w-full"
-                      value={it.unitId ?? ""}
-                      onChange={(e) => {
-                        const val = e.target.value || null;
-                        onFieldChange(it.id, "unitId", val);
-                        const found = units.find((u) => u.id === val);
-                        onFieldChange(it.id, "unit", found ?? null);
-                      }}
-                    >
-                      <option value="">– Keine –</option>
-                      {units.map((u) => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
-                    {it.unit?.leader && <div className="text-xs text-zinc-500">Leitung: {it.unit.leader}</div>}
-                    {it.unit?.deputy && <div className="text-xs text-zinc-500">Stellv.: {it.unit.deputy}</div>}
-                  </td>
-                  <td className="p-2">
-                    <div className="flex flex-col gap-2 text-xs">
-                      <label className="flex items-center gap-2 whitespace-nowrap">
-                        <input type="checkbox" checked={!!it.lockAll} onChange={(e) => onFieldChange(it.id, "lockAll", e.target.checked)} />
-                        Datensatz
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockFirstName} onChange={(e) => onFieldChange(it.id, "lockFirstName", e.target.checked)} /> Vorname</label>
-                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockLastName} onChange={(e) => onFieldChange(it.id, "lockLastName", e.target.checked)} /> Nachname</label>
-                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockEmail} onChange={(e) => onFieldChange(it.id, "lockEmail", e.target.checked)} /> Email</label>
-                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockStartDate} onChange={(e) => onFieldChange(it.id, "lockStartDate", e.target.checked)} /> Eintritt</label>
-                        <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={!!it.lockBirthDate} onChange={(e) => onFieldChange(it.id, "lockBirthDate", e.target.checked)} /> Geburtstag</label>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-2">
-                    <button onClick={() => save(it.id)} className="rounded bg-black text-white px-3 py-1">Speichern</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between mt-3 text-sm">
-            <span>{filtered.length} Einträge</span>
+    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-800">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Mitarbeiter</h1>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                Verwalten Sie Ihre Mitarbeiterdaten und importieren Sie neue Einträge aus Excel
+              </p>
+            </div>
             <div className="flex items-center gap-2">
-              <button disabled={currentPage<=1} onClick={() => setPage((p) => Math.max(1, p-1))} className="border rounded px-2 py-1 disabled:opacity-50">Zurück</button>
-              <span>Seite {currentPage} / {totalPages}</span>
-              <button disabled={currentPage>=totalPages} onClick={() => setPage((p) => Math.min(totalPages, p+1))} className="border rounded px-2 py-1 disabled:opacity-50">Weiter</button>
+              {loading && (
+                <span className="flex items-center gap-2 text-sm text-zinc-500">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  Lade Daten...
+                </span>
+              )}
             </div>
           </div>
         </div>
-      )}
 
-      {unitDialogOpen && (
-        <UnitDialog
-          units={units}
-          onClose={() => setUnitDialogOpen(false)}
-          onRefresh={async () => {
-            await loadUnits();
-            await load();
-          }}
-        />
-      )}
+        {/* Import Section */}
+        <div className="mb-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">
+            <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Excel-Import
+          </h2>
+          <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-4" encType="multipart/form-data">
+            <div className="flex-1 min-w-[280px]">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                Datei auswählen
+              </label>
+              <input 
+                type="file" 
+                name="file" 
+                accept=".xlsx" 
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white dark:file:bg-zinc-600 dark:file:text-zinc-200" 
+              />
+              <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">Spalten: Nachname | Vorname | Email | Eintrittsdatum | Geburtstag</p>
+            </div>
+            <button 
+              disabled={busy} 
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {busy ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  Import läuft…
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  Import starten
+                </>
+              )}
+            </button>
+          </form>
+          {status && (
+            <div className={`mt-4 rounded-lg px-4 py-3 text-sm ${status.startsWith("Fehler") ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"}`}>
+              {status}
+            </div>
+          )}
+        </div>
+
+        {/* Actions Bar */}
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <button 
+            onClick={load} 
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            Aktualisieren
+          </button>
+          <a 
+            href="/api/template" 
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Vorlage
+          </a>
+          <a 
+            href="/api/employees/export.csv" 
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+            CSV
+          </a>
+          <a 
+            href="/api/employees/export.xlsx" 
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+            XLSX
+          </a>
+          <button 
+            onClick={() => setUnitDialogOpen(true)} 
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+            Units verwalten
+          </button>
+          <div className="flex-1" />
+          <div className="relative min-w-[280px]">
+            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+              placeholder="Mitarbeiter suchen..."
+              className="w-full rounded-lg border border-zinc-300 bg-white py-2 pl-10 pr-4 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+            />
+          </div>
+        </div>
+
+        {/* Employee List */}
+        {items && filtered && (
+          <>
+            {/* Stats Bar */}
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">{filtered.length} Mitarbeiter gefunden</span>
+            </div>
+
+            {/* Employee Cards */}
+            <div className="space-y-4">
+              {paged.map((it) => (
+                <div key={it.id} className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Name Fields */}
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Nachname</label>
+                      <input 
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" 
+                        value={it.lastName ?? ""} 
+                        onChange={(e) => onFieldChange(it.id, "lastName", e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Vorname</label>
+                      <input 
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" 
+                        value={it.firstName ?? ""} 
+                        onChange={(e) => onFieldChange(it.id, "firstName", e.target.value)} 
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Email</label>
+                      <input 
+                        type="email"
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" 
+                        value={it.email ?? ""} 
+                        onChange={(e) => onFieldChange(it.id, "email", e.target.value)} 
+                      />
+                    </div>
+                    
+                    {/* Date Fields */}
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Eintritt</label>
+                      <input 
+                        type="date" 
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" 
+                        value={it.startDate ? String(it.startDate).slice(0,10) : ""} 
+                        onChange={(e) => onFieldChange(it.id, "startDate", e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Geburtstag</label>
+                      <input 
+                        type="date" 
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" 
+                        value={it.birthDate ? String(it.birthDate).slice(0,10) : ""} 
+                        onChange={(e) => onFieldChange(it.id, "birthDate", e.target.value)} 
+                      />
+                    </div>
+                    
+                    {/* Unit Field */}
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Unit</label>
+                      <select
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+                        value={it.unitId ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value || null;
+                          onFieldChange(it.id, "unitId", val);
+                          const found = units.find((u) => u.id === val);
+                          onFieldChange(it.id, "unit", found ?? null);
+                        }}
+                      >
+                        <option value="">– Keine –</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                      {it.unit?.leader && <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Leitung: {it.unit.leader}</p>}
+                    </div>
+                  </div>
+                  
+                  {/* Lock Controls & Save Button */}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-zinc-100 pt-4 dark:border-zinc-700">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600" 
+                          checked={!!it.lockAll} 
+                          onChange={(e) => onFieldChange(it.id, "lockAll", e.target.checked)} 
+                        />
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">Alles sperren</span>
+                      </label>
+                      <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-600" />
+                      <div className="flex flex-wrap gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                        <label className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200">
+                          <input type="checkbox" className="h-3.5 w-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600" checked={!!it.lockFirstName} onChange={(e) => onFieldChange(it.id, "lockFirstName", e.target.checked)} />
+                          Vorname
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200">
+                          <input type="checkbox" className="h-3.5 w-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600" checked={!!it.lockLastName} onChange={(e) => onFieldChange(it.id, "lockLastName", e.target.checked)} />
+                          Nachname
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200">
+                          <input type="checkbox" className="h-3.5 w-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600" checked={!!it.lockEmail} onChange={(e) => onFieldChange(it.id, "lockEmail", e.target.checked)} />
+                          Email
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200">
+                          <input type="checkbox" className="h-3.5 w-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600" checked={!!it.lockStartDate} onChange={(e) => onFieldChange(it.id, "lockStartDate", e.target.checked)} />
+                          Eintritt
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200">
+                          <input type="checkbox" className="h-3.5 w-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600" checked={!!it.lockBirthDate} onChange={(e) => onFieldChange(it.id, "lockBirthDate", e.target.checked)} />
+                          Geburtstag
+                        </label>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => save(it.id)} 
+                      className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      Speichern
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-6 flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                Seite {currentPage} von {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <button 
+                  disabled={currentPage<=1} 
+                  onClick={() => setPage((p) => Math.max(1, p-1))} 
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Zurück
+                </button>
+                <button 
+                  disabled={currentPage>=totalPages} 
+                  onClick={() => setPage((p) => Math.min(totalPages, p+1))} 
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
+                >
+                  Weiter
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {unitDialogOpen && (
+          <UnitDialog
+            units={units}
+            onClose={() => setUnitDialogOpen(false)}
+            onRefresh={async () => {
+              await loadUnits();
+              await load();
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
