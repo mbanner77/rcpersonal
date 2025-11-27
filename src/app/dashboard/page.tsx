@@ -4,15 +4,43 @@ import Link from "next/link";
 import { db } from "@/lib/prisma";
 import Controls from "./Controls";
 import { findUpcomingJubilees, parseJubileeYears, type EmployeeLike, isBirthday } from "@/lib/jubilee";
-import AiAssistant from "./AiAssistant";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 export default async function DashboardPage({ searchParams }: { searchParams: SearchParams }) {
-  const [settings, employees, lastImport] = await Promise.all([
+  // Load all dashboard data in parallel
+  const [settings, employees, lastImport, taskStats, upcomingReminders] = await Promise.all([
     db.setting.findUnique({ where: { id: 1 } }),
     db.employee.findMany({ orderBy: { lastName: "asc" } }),
     db.employeeImportLog.findFirst({ orderBy: { createdAt: "desc" } }),
+    // Task statistics
+    (async () => {
+      try {
+        const [total, open, overdue] = await Promise.all([
+          (db as unknown as { taskAssignment: { count: () => Promise<number> } }).taskAssignment.count(),
+          (db as unknown as { taskAssignment: { count: (args: { where: { status: { isDone: boolean } } }) => Promise<number> } }).taskAssignment.count({ 
+            where: { status: { isDone: false } } 
+          }),
+          (db as unknown as { taskAssignment: { count: (args: { where: { status: { isDone: boolean }; dueDate: { lt: Date } } }) => Promise<number> } }).taskAssignment.count({ 
+            where: { status: { isDone: false }, dueDate: { lt: new Date() } } 
+          }),
+        ]);
+        return { total, open, overdue, completed: total - open };
+      } catch { return { total: 0, open: 0, overdue: 0, completed: 0 }; }
+    })(),
+    // Upcoming reminders (next 7 days)
+    (async () => {
+      try {
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        return await (db as unknown as { reminder: { findMany: (args: { where: { dueDate: { gte: Date; lte: Date } }; include: { employee: { select: { firstName: true; lastName: true } } }; orderBy: { dueDate: "asc" }; take: number }) => Promise<Array<{ id: string; type: string; dueDate: Date; employee: { firstName: string; lastName: string } | null }>> } }).reminder.findMany({
+          where: { dueDate: { gte: new Date(), lte: nextWeek } },
+          include: { employee: { select: { firstName: true, lastName: true } } },
+          orderBy: { dueDate: "asc" },
+          take: 5,
+        });
+      } catch { return []; }
+    })(),
   ]);
   const years = parseJubileeYears(settings);
   type EmployeeRow = (typeof employees)[number];
@@ -272,6 +300,98 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
               <p className="mt-1 truncate text-xs text-zinc-500">{exitedEmployees.slice(0, 2).map((e: EmployeeRow) => `${e.lastName}`).join(", ") || "Keine"}</p>
             </div>
           </Link>
+        </div>
+
+        {/* Quick Actions & Today's Focus Row */}
+        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Quick Actions */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+            <h3 className="mb-4 flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+              <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+              Schnellaktionen
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/employees" className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-indigo-600 dark:hover:bg-indigo-900/20">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>
+                Mitarbeiter
+              </Link>
+              <Link href="/onboarding" className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-emerald-600 dark:hover:bg-emerald-900/20">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                Onboarding
+              </Link>
+              <Link href="/offboarding" className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-rose-600 dark:hover:bg-rose-900/20">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                Offboarding
+              </Link>
+              <Link href="/admin/reminders" className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-amber-600 dark:hover:bg-amber-900/20">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                Erinnerungen
+              </Link>
+            </div>
+          </div>
+
+          {/* Lifecycle Task Stats */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+            <h3 className="mb-4 flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+              <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+              Lifecycle-Aufgaben
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-700/50">
+                <div className="text-2xl font-bold text-zinc-900 dark:text-white">{taskStats.total}</div>
+                <div className="text-xs text-zinc-500">Gesamt</div>
+              </div>
+              <div className="rounded-xl bg-emerald-50 p-3 dark:bg-emerald-900/20">
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{taskStats.completed}</div>
+                <div className="text-xs text-emerald-600 dark:text-emerald-400">Erledigt</div>
+              </div>
+              <div className="rounded-xl bg-amber-50 p-3 dark:bg-amber-900/20">
+                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{taskStats.open}</div>
+                <div className="text-xs text-amber-600 dark:text-amber-400">Offen</div>
+              </div>
+              <div className="rounded-xl bg-rose-50 p-3 dark:bg-rose-900/20">
+                <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{taskStats.overdue}</div>
+                <div className="text-xs text-rose-600 dark:text-rose-400">Überfällig</div>
+              </div>
+            </div>
+            {taskStats.total > 0 && (
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-xs text-zinc-500">
+                  <span>Fortschritt</span>
+                  <span>{Math.round((taskStats.completed / taskStats.total) * 100)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(taskStats.completed / taskStats.total) * 100}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Upcoming Reminders */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+            <h3 className="mb-4 flex items-center justify-between font-semibold text-zinc-900 dark:text-white">
+              <span className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Anstehende Erinnerungen
+              </span>
+              <Link href="/admin/reminders" className="text-xs font-normal text-indigo-600 hover:underline">Alle</Link>
+            </h3>
+            {upcomingReminders.length === 0 ? (
+              <p className="py-4 text-center text-sm text-zinc-500">Keine Erinnerungen in den nächsten 7 Tagen</p>
+            ) : (
+              <ul className="space-y-2">
+                {upcomingReminders.map((reminder) => (
+                  <li key={reminder.id} className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{reminder.type}</span>
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{reminder.employee?.lastName}, {reminder.employee?.firstName}</span>
+                    </div>
+                    <span className="text-xs text-zinc-500">{new Date(reminder.dueDate).toLocaleDateString("de-DE")}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
       {focusParam === "birthdays-today" && (
