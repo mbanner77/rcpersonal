@@ -468,7 +468,8 @@ model LifecycleTask {
 
 // --- Reminders ---
 
-enum ReminderType {
+// Legacy enum kept for migration compatibility
+enum ReminderTypeLegacy {
   GEHALT
   MEILENSTEIN
   SONDERBONUS
@@ -477,10 +478,27 @@ enum ReminderType {
   WEIHNACHTSGELD
 }
 
-model Reminder {
-  id          String        @id @default(cuid())
-  type        ReminderType
+model ReminderType {
+  id          String     @id @default(cuid())
+  key         String     @unique // e.g. "GEHALT", "CUSTOM_TYPE"
+  label       String     // Display name, e.g. "Gehalt", "Sonderbonus"
   description String?
+  color       String?    // Optional color for UI (hex or tailwind class)
+  orderIndex  Int        @default(0)
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  reminders   Reminder[]
+}
+
+model Reminder {
+  id            String        @id @default(cuid())
+  reminderType  ReminderType  @relation(fields: [reminderTypeId], references: [id])
+  reminderTypeId String
+  // Legacy field for migration (to be removed after migration)
+  typeLegacy    ReminderTypeLegacy? @map("type")
+  description   String?
   employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId  String
   dueDate     DateTime
