@@ -39,6 +39,9 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  // Reminder trigger state
+  const [triggeringReminders, setTriggeringReminders] = useState(false);
+  const [reminderResult, setReminderResult] = useState<{ ok: boolean; message: string; sent?: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -221,6 +224,85 @@ export default function SettingsPage() {
                   <input type="number" min={0} max={23} value={data.dailySendHour} onChange={(e) => update("dailySendHour", Number(e.target.value))} className="w-16 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-center text-sm focus:border-amber-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" />
                   <span className="text-sm text-zinc-500">Uhr</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Erinnerungen Card */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-900/30">
+                  <svg className="h-5 w-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Erinnerungen (Lifecycle)</h2>
+                  <p className="text-xs text-zinc-500">Automatischer und manueller Erinnerungsversand für HR-Ereignisse</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  Erinnerungen werden automatisch über den Cron-Job versendet (täglich zur konfigurierten Sendezeit). 
+                  Sie können den Versand auch manuell anstoßen.
+                </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <button
+                    type="button"
+                    disabled={triggeringReminders}
+                    onClick={async () => {
+                      setTriggeringReminders(true);
+                      setReminderResult(null);
+                      try {
+                        const res = await fetch("/api/cron/reminders/send", { 
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ manual: true })
+                        });
+                        const json = await res.json().catch(() => null);
+                        if (res.ok) {
+                          setReminderResult({ 
+                            ok: true, 
+                            message: `Erfolgreich: ${json?.sent ?? 0} Erinnerungen versendet`,
+                            sent: json?.sent ?? 0
+                          });
+                        } else {
+                          setReminderResult({ 
+                            ok: false, 
+                            message: json?.error ?? `Fehler: HTTP ${res.status}` 
+                          });
+                        }
+                      } catch (err) {
+                        setReminderResult({ 
+                          ok: false, 
+                          message: err instanceof Error ? err.message : "Unbekannter Fehler" 
+                        });
+                      } finally {
+                        setTriggeringReminders(false);
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    {triggeringReminders ? "Sende…" : "Erinnerungen jetzt senden"}
+                  </button>
+                  <a 
+                    href="/admin/reminders" 
+                    className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Erinnerungen verwalten
+                  </a>
+                </div>
+                {reminderResult && (
+                  <div className={`mt-2 rounded-lg border px-4 py-3 text-sm ${reminderResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"}`}>
+                    {reminderResult.ok ? "✓" : "✗"} {reminderResult.message}
+                  </div>
+                )}
               </div>
             </div>
 
