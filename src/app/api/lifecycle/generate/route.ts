@@ -9,6 +9,8 @@ const bodySchema = z.object({
   type: z.enum(TaskTypeValues),
   // optional: regenerate even if exists
   overwrite: z.boolean().optional().default(false),
+  // optional: only generate for a specific template
+  templateId: z.string().cuid().optional(),
 });
 
 function canGenerate(user: SessionUser) {
@@ -23,7 +25,7 @@ export async function POST(req: Request) {
 
   const parsed = bodySchema.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-  const { employeeId, type, overwrite } = parsed.data;
+  const { employeeId, type, overwrite, templateId } = parsed.data;
 
   const employee = await (db as any)["employee"].findUnique({
     where: { id: employeeId },
@@ -37,8 +39,13 @@ export async function POST(req: Request) {
   }
 
   // Get templates with their role key for legacy enum mapping
+  // If templateId is provided, only generate for that specific template
+  const templateWhere: { type: string; active: boolean; id?: string } = { type, active: true };
+  if (templateId) {
+    templateWhere.id = templateId;
+  }
   const templates = await (db as any)["taskTemplate"].findMany({
-    where: { type, active: true },
+    where: templateWhere,
     orderBy: { title: "asc" },
     select: { 
       id: true, 

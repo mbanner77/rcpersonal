@@ -6,6 +6,7 @@ import Link from "next/link";
 type Status = { id: string; key: string; label: string; isDone: boolean };
 type Role = { id: string; key: string; label: string };
 type Employee = { id: string; firstName: string; lastName: string; email: string | null; startDate: string | null; exitDate: string | null };
+type AvailableTemplate = { id: string; title: string; type: string; active: boolean };
 
 type Task = {
   id: string;
@@ -80,23 +81,34 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const [availableTemplates, setAvailableTemplates] = useState<AvailableTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(""); // empty = all templates
   const [generating, setGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState<string | null>(null);
   const [showGeneratePanel, setShowGeneratePanel] = useState(false);
 
-  // Load employees for the generate panel
-  const loadEmployees = useCallback(async () => {
+  // Load employees and templates for the generate panel
+  const loadEmployeesAndTemplates = useCallback(async () => {
     try {
-      const res = await fetch("/api/employees");
-      if (res.ok) {
-        const data = await res.json();
+      // Load employees
+      const empRes = await fetch("/api/employees");
+      if (empRes.ok) {
+        const data = await empRes.json();
         const list = Array.isArray(data) ? data : (data.data ?? []);
         setEmployees(list);
       }
+      // Load templates for this task type
+      const tplRes = await fetch(`/api/admin/lifecycle/templates?type=${taskType}`);
+      if (tplRes.ok) {
+        const tplData = await tplRes.json();
+        const tplList = Array.isArray(tplData) ? tplData : (tplData.data ?? []);
+        // Filter to only active templates
+        setAvailableTemplates(tplList.filter((t: AvailableTemplate) => t.active));
+      }
     } catch (err) {
-      console.error("Failed to load employees:", err);
+      console.error("Failed to load employees/templates:", err);
     }
-  }, []);
+  }, [taskType]);
 
   // Generate tasks for an employee
   const generateTasks = async () => {
@@ -104,10 +116,17 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     setGenerating(true);
     setGenerateResult(null);
     try {
+      const body: { employeeId: string; type: string; templateId?: string } = {
+        employeeId: selectedEmployeeId,
+        type: taskType,
+      };
+      if (selectedTemplateId) {
+        body.templateId = selectedTemplateId;
+      }
       const res = await fetch("/api/lifecycle/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId: selectedEmployeeId, type: taskType }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? "Fehler beim Generieren");
@@ -147,8 +166,8 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   }, [load]);
 
   useEffect(() => {
-    if (showGeneratePanel) void loadEmployees();
-  }, [showGeneratePanel, loadEmployees]);
+    if (showGeneratePanel) void loadEmployeesAndTemplates();
+  }, [showGeneratePanel, loadEmployeesAndTemplates]);
 
   const resetFilters = () => {
     setStatusFilter("ALL");
@@ -327,13 +346,13 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
             {taskType === "ONBOARDING" ? "Onboarding" : "Offboarding"}-Aufgaben für Mitarbeiter generieren
           </h3>
           <p className="mb-4 text-xs text-emerald-700">
-            Wählen Sie einen Mitarbeiter aus, um basierend auf den aktiven Vorlagen automatisch Aufgaben zu erstellen.
+            Wählen Sie einen Mitarbeiter und optional eine bestimmte Vorlage aus, um Aufgaben zu erstellen.
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-emerald-800">Mitarbeiter</span>
               <select
-                className="min-w-[300px] rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="min-w-[280px] rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
               >
@@ -349,6 +368,21 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
                     </option>
                   );
                 })}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-emerald-800">Vorlage</span>
+              <select
+                className="min-w-[250px] rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+              >
+                <option value="">Alle aktiven Vorlagen ({availableTemplates.length})</option>
+                {availableTemplates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.title}
+                  </option>
+                ))}
               </select>
             </label>
             <button
