@@ -1,8 +1,12 @@
--- CreateEnum
-CREATE TYPE "ReminderTypeLegacy" AS ENUM ('GEHALT', 'MEILENSTEIN', 'SONDERBONUS', 'STAFFELBONUS', 'URLAUBSGELD', 'WEIHNACHTSGELD');
+-- CreateEnum (only if not exists)
+DO $$ BEGIN
+    CREATE TYPE "ReminderTypeLegacy" AS ENUM ('GEHALT', 'MEILENSTEIN', 'SONDERBONUS', 'STAFFELBONUS', 'URLAUBSGELD', 'WEIHNACHTSGELD');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateTable
-CREATE TABLE "ReminderType" (
+-- CreateTable (only if not exists)
+CREATE TABLE IF NOT EXISTS "ReminderType" (
     "id" TEXT NOT NULL,
     "key" TEXT NOT NULL,
     "label" TEXT NOT NULL,
@@ -16,8 +20,8 @@ CREATE TABLE "ReminderType" (
     CONSTRAINT "ReminderType_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "ReminderType_key_key" ON "ReminderType"("key");
+-- CreateIndex (only if not exists)
+CREATE UNIQUE INDEX IF NOT EXISTS "ReminderType_key_key" ON "ReminderType"("key");
 
 -- AddColumn (nullable to allow existing data)
 ALTER TABLE "Reminder" ADD COLUMN IF NOT EXISTS "reminderTypeId" TEXT;

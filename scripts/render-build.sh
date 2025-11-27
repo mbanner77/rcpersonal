@@ -115,12 +115,16 @@ def clean_alter_table(match):
     skip_ops = [
         r'DROP\s+COLUMN\s+"status"',
         r'DROP\s+COLUMN\s+"ownerRole"',
+        r'DROP\s+COLUMN\s+"type"',
         r'ADD\s+COLUMN\s+"status"',
         r'ADD\s+COLUMN\s+"ownerRole"',
+        r'ADD\s+COLUMN\s+"type"',
         r'ADD\s+COLUMN\s+"statusLegacy"',
         r'ADD\s+COLUMN\s+"ownerRoleLegacy"',
+        r'ADD\s+COLUMN\s+"typeLegacy"',
         r'ALTER\s+COLUMN\s+"status"',
         r'ALTER\s+COLUMN\s+"ownerRole"',
+        r'ALTER\s+COLUMN\s+"type"',
     ]
     ops_match = re.search(r'ALTER\s+TABLE\s+"[^"]+"\s*(.*);', block, re.DOTALL | re.IGNORECASE)
     if not ops_match:
@@ -237,12 +241,16 @@ def clean_alter_table(match):
     skip_ops = [
         r'DROP\s+COLUMN\s+"status"',
         r'DROP\s+COLUMN\s+"ownerRole"',
+        r'DROP\s+COLUMN\s+"type"',
         r'ADD\s+COLUMN\s+"status"',
         r'ADD\s+COLUMN\s+"ownerRole"',
+        r'ADD\s+COLUMN\s+"type"',
         r'ADD\s+COLUMN\s+"statusLegacy"',
         r'ADD\s+COLUMN\s+"ownerRoleLegacy"',
+        r'ADD\s+COLUMN\s+"typeLegacy"',
         r'ALTER\s+COLUMN\s+"status"',
         r'ALTER\s+COLUMN\s+"ownerRole"',
+        r'ALTER\s+COLUMN\s+"type"',
     ]
     # Extract just the operations part (after ALTER TABLE "name")
     ops_match = re.search(r'ALTER\s+TABLE\s+"[^"]+"\s*(.*);', block, re.DOTALL | re.IGNORECASE)
