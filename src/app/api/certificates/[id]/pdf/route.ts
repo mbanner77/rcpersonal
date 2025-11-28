@@ -171,7 +171,10 @@ export async function GET(
       new Date().toISOString().slice(0, 10)
     }.pdf`;
 
-    return new Response(pdfBuffer, {
+    // Convert Buffer to Uint8Array for Response compatibility
+    const uint8Array = new Uint8Array(pdfBuffer);
+
+    return new Response(uint8Array, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
