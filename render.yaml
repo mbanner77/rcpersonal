@@ -1,3 +1,9 @@
+envVarGroups:
+  - name: shared-secrets
+    envVars:
+      - key: CRON_SECRET
+        generateValue: true
+
 services:
   - type: web
     name: employee-anniversaries-web
@@ -7,6 +13,8 @@ services:
     buildCommand: ./scripts/render-build.sh
     startCommand: ./scripts/render-start.sh
     autoDeploy: true
+    envVarGroups:
+      - shared-secrets
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,8 +24,6 @@ services:
         fromDatabase:
           name: employee-anniversaries-db
           property: connectionString
-      - key: CRON_SECRET
-        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -40,6 +46,8 @@ services:
     repo: https://github.com/mbanner77/rcpersonal.git
     buildCommand: npm ci
     startCommand: node scripts/cron-runner.js
+    envVarGroups:
+      - shared-secrets
     envVars:
       - key: NODE_ENV
         value: production
@@ -48,8 +56,6 @@ services:
           name: employee-anniversaries-web
           type: web
           property: host
-      - key: CRON_SECRET
-        sync: false
 
 databases:
   - name: employee-anniversaries-db
