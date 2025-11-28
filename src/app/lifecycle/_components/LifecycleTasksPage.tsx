@@ -76,6 +76,7 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
+  const [editOwnerRoleId, setEditOwnerRoleId] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -87,25 +88,34 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
   const [generateResult, setGenerateResult] = useState<string | null>(null);
   const [showGeneratePanel, setShowGeneratePanel] = useState(false);
   const [allStatuses, setAllStatuses] = useState<Status[]>([]);
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
 
-  // Load all available statuses on mount
-  const loadStatuses = useCallback(async () => {
+  // Load all available statuses and roles on mount
+  const loadStatusesAndRoles = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/lifecycle/statuses");
-      if (res.ok) {
-        const data = await res.json();
+      const [statusRes, roleRes] = await Promise.all([
+        fetch("/api/admin/lifecycle/statuses"),
+        fetch("/api/admin/lifecycle/roles"),
+      ]);
+      if (statusRes.ok) {
+        const data = await statusRes.json();
         const list = Array.isArray(data) ? data : (data.data ?? []);
         setAllStatuses(list);
       }
+      if (roleRes.ok) {
+        const data = await roleRes.json();
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setAllRoles(list);
+      }
     } catch (err) {
-      console.error("Failed to load statuses:", err);
+      console.error("Failed to load statuses/roles:", err);
     }
   }, []);
 
-  // Load statuses on mount
+  // Load statuses and roles on mount
   useEffect(() => {
-    void loadStatuses();
-  }, [loadStatuses]);
+    void loadStatusesAndRoles();
+  }, [loadStatusesAndRoles]);
 
   // Load employees and templates for the generate panel
   const loadEmployeesAndTemplates = useCallback(async () => {
@@ -212,12 +222,14 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
     setEditingId(task.id);
     setEditNotes(task.notes ?? "");
     setEditDueDate(task.dueDate ? task.dueDate.slice(0, 10) : "");
+    setEditOwnerRoleId(task.ownerRole?.id ?? "");
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditNotes("");
     setEditDueDate("");
+    setEditOwnerRoleId("");
   };
 
   const updateStatus = async (id: string, statusId: string) => {
@@ -253,6 +265,9 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
       payload.notes = editNotes.trim() ? editNotes.trim() : null;
       if (editDueDate) {
         payload.dueDate = new Date(`${editDueDate}T00:00:00`).toISOString();
+      }
+      if (editOwnerRoleId) {
+        payload.ownerRoleId = editOwnerRoleId;
       }
       const res = await fetch(`/api/lifecycle/tasks`, {
         method: "PATCH",
@@ -647,6 +662,19 @@ export default function LifecycleTasksPage({ taskType, title }: Props) {
                       value={editDueDate}
                       onChange={(event) => setEditDueDate(event.target.value)}
                     />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-zinc-600">Zuständige Rolle</span>
+                    <select
+                      className="rounded border px-3 py-2"
+                      value={editOwnerRoleId}
+                      onChange={(event) => setEditOwnerRoleId(event.target.value)}
+                    >
+                      <option value="">-- Rolle wählen --</option>
+                      {allRoles.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1 md:col-span-2">
                     <span className="text-xs font-medium text-zinc-600">Notizen</span>

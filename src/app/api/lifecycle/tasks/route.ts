@@ -16,6 +16,7 @@ const querySchema = z.object({
 const patchSchema = z.object({
   id: z.string().cuid(),
   statusId: z.string().cuid().optional(),
+  ownerRoleId: z.string().cuid().optional(),
   notes: z.string().max(2000).nullable().optional(),
   dueDate: z.string().datetime().optional(),
 });
@@ -123,7 +124,7 @@ export async function PATCH(req: Request) {
   await requireUser();
   const parsed = patchSchema.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-  const { id, statusId, notes, dueDate } = parsed.data;
+  const { id, statusId, ownerRoleId, notes, dueDate } = parsed.data;
 
   const data: any = {};
   if (statusId) {
@@ -132,6 +133,7 @@ export async function PATCH(req: Request) {
     const s = await (db as any)["lifecycleStatus"].findUnique({ where: { id: statusId }, select: { isDone: true } });
     if (s) data.completedAt = s.isDone ? new Date() : null;
   }
+  if (ownerRoleId) data.ownerRoleId = ownerRoleId;
   if (notes !== undefined) data.notes = notes ?? null;
   if (dueDate !== undefined) data.dueDate = new Date(dueDate);
 
