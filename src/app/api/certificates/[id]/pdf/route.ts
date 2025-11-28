@@ -1,29 +1,21 @@
 import { db } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { renderToBuffer } from "@react-pdf/renderer";
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
-import React from "react";
-
-// Register a font for German characters
-Font.register({
-  family: "Helvetica",
-  fonts: [
-    { src: "Helvetica" },
-    { src: "Helvetica-Bold", fontWeight: "bold" },
-  ],
-});
+import { renderToBuffer, Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import React, { ReactElement } from "react";
+import type { DocumentProps } from "@react-pdf/renderer";
 
 // PDF Styles
 const styles = StyleSheet.create({
   page: {
     padding: 60,
     fontSize: 11,
-    fontFamily: "Helvetica",
     lineHeight: 1.6,
   },
   header: {
     marginBottom: 30,
-    borderBottom: "1 solid #333",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    borderBottomStyle: "solid",
     paddingBottom: 15,
   },
   title: {
@@ -50,17 +42,13 @@ const styles = StyleSheet.create({
     left: 60,
     right: 60,
   },
-  footerLine: {
-    borderTop: "1 solid #333",
-    paddingTop: 10,
-    marginTop: 30,
-  },
   signatureLine: {
     marginTop: 50,
-    borderTop: "1 solid #333",
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+    borderTopStyle: "solid",
     width: 200,
     paddingTop: 5,
-    fontSize: 10,
   },
   dateLocation: {
     marginTop: 30,
@@ -73,21 +61,19 @@ const styles = StyleSheet.create({
   },
 });
 
-// PDF Document Component
-function CertificatePDF({
-  certificate,
-}: {
-  certificate: {
-    title: string | null;
-    type: string;
-    employeeName: string;
-    jobTitle: string | null;
-    startDate: Date;
-    endDate: Date | null;
-    issueDate: Date;
-    fullContent: string | null;
-  };
-}) {
+type CertificateData = {
+  title: string | null;
+  type: string;
+  employeeName: string;
+  jobTitle: string | null;
+  startDate: Date;
+  endDate: Date | null;
+  issueDate: Date;
+  fullContent: string | null;
+};
+
+// Helper to create the PDF document using React.createElement
+function createPdfDocument(certificate: CertificateData): ReactElement<DocumentProps> {
   const formatDate = (date: Date | null) => {
     if (!date) return "";
     return new Intl.DateTimeFormat("de-DE", {
@@ -104,14 +90,18 @@ function CertificatePDF({
     QUALIFIZIERT: "Qualifiziertes Arbeitszeugnis",
   };
 
-  const title = certificate.title || typeLabels[certificate.type] || "Arbeitszeugnis";
-  
-  // Split content into paragraphs
+  const docTitle = certificate.title || typeLabels[certificate.type] || "Arbeitszeugnis";
   const paragraphs = (certificate.fullContent || "").split("\n\n").filter(Boolean);
 
+  // Build paragraph elements
+  const paragraphElements = paragraphs.map((para, idx) =>
+    React.createElement(Text, { key: idx, style: styles.paragraph }, para)
+  );
+
+  // Build the document structure
   return React.createElement(
     Document,
-    { title: title, author: "HR-Modul" },
+    { title: docTitle, author: "HR-Modul" },
     React.createElement(
       Page,
       { size: "A4", style: styles.page },
@@ -119,43 +109,21 @@ function CertificatePDF({
       React.createElement(
         View,
         { style: styles.header },
-        React.createElement(Text, { style: styles.title }, title),
-        React.createElement(
-          Text,
-          { style: styles.subtitle },
-          `für ${certificate.employeeName}`
-        )
+        React.createElement(Text, { style: styles.title }, docTitle),
+        React.createElement(Text, { style: styles.subtitle }, "für " + certificate.employeeName)
       ),
       // Content
-      React.createElement(
-        View,
-        { style: styles.section },
-        paragraphs.map((para, idx) =>
-          React.createElement(
-            Text,
-            { key: idx, style: styles.paragraph },
-            para
-          )
-        )
-      ),
-      // Footer with date and signature
+      React.createElement(View, { style: styles.section }, ...paragraphElements),
+      // Footer
       React.createElement(
         View,
         { style: styles.footer },
-        React.createElement(
-          Text,
-          { style: styles.dateLocation },
-          `Ort, den ${formatDate(certificate.issueDate)}`
-        ),
+        React.createElement(Text, { style: styles.dateLocation }, "Ort, den " + formatDate(certificate.issueDate)),
         React.createElement(View, { style: styles.signatureLine }),
-        React.createElement(
-          Text,
-          { style: styles.meta },
-          "Unterschrift Geschäftsführung / Personalabteilung"
-        )
+        React.createElement(Text, { style: styles.meta }, "Unterschrift Geschäftsführung / Personalabteilung")
       )
     )
-  );
+  ) as ReactElement<DocumentProps>;
 }
 
 export async function GET(
@@ -195,8 +163,8 @@ export async function GET(
     }
 
     // Generate PDF
-    const pdfElement = React.createElement(CertificatePDF, { certificate });
-    const pdfBuffer = await renderToBuffer(pdfElement);
+    const pdfDocument = createPdfDocument(certificate);
+    const pdfBuffer = await renderToBuffer(pdfDocument);
 
     // Create filename
     const filename = `Zeugnis_${certificate.employeeName.replace(/\s+/g, "_")}_${
