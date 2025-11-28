@@ -87,6 +87,14 @@ export default function CertificatesPage() {
   
   // Preview state
   const [previewCertificate, setPreviewCertificate] = useState<Certificate | null>(null);
+  
+  // Edit sections state
+  const [editingSections, setEditingSections] = useState<Certificate | null>(null);
+  const [sectionContents, setSectionContents] = useState<Record<string, string>>({});
+  const [savingSections, setSavingSections] = useState(false);
+  
+  // Seeding state
+  const [seeding, setSeeding] = useState(false);
 
   // Load data
   const loadData = useCallback(async () => {
@@ -245,6 +253,80 @@ export default function CertificatesPage() {
     }
   };
 
+  // Download PDF
+  const downloadPDF = async (id: string) => {
+    try {
+      const res = await fetch(`/api/certificates/${id}/pdf`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "PDF-Erstellung fehlgeschlagen");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.headers.get("content-disposition")?.split("filename=")[1]?.replace(/"/g, "") || "Zeugnis.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "PDF-Download fehlgeschlagen");
+    }
+  };
+
+  // Open section editor
+  const openSectionEditor = (cert: Certificate) => {
+    const contents: Record<string, string> = {};
+    cert.sections.forEach(s => {
+      contents[s.id] = s.content;
+    });
+    setSectionContents(contents);
+    setEditingSections(cert);
+  };
+
+  // Save sections
+  const saveSections = async () => {
+    if (!editingSections) return;
+    setSavingSections(true);
+    try {
+      const sections = Object.entries(sectionContents).map(([id, content]) => ({ id, content }));
+      const res = await fetch(`/api/certificates/${editingSections.id}/sections`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections }),
+      });
+      if (!res.ok) {
+        throw new Error("Speichern fehlgeschlagen");
+      }
+      setEditingSections(null);
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setSavingSections(false);
+    }
+  };
+
+  // Seed standard text blocks
+  const seedTextBlocks = async () => {
+    if (!confirm("Standard-Textbausteine für deutsche Arbeitszeugnisse erstellen?")) return;
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/admin/certificates/seed", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Fehler");
+      }
+      alert(data.message);
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-6 text-zinc-500">Lade Daten...</div>;
   }
@@ -258,7 +340,16 @@ export default function CertificatesPage() {
             Generieren Sie Arbeitszeugnisse basierend auf Standardtextbausteinen
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {categories.length === 0 && (
+            <button
+              onClick={seedTextBlocks}
+              disabled={seeding}
+              className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+            >
+              {seeding ? "Erstelle..." : "⚡ Standard-Textbausteine laden"}
+            </button>
+          )}
           <Link
             href="/admin/certificates"
             className="rounded border px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -388,6 +479,68 @@ export default function CertificatesPage() {
         </div>
       )}
 
+      {/* Section Edit Modal */}
+      {editingSections && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-auto p-4">
+          <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-800 max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Zeugnis bearbeiten</h2>
+              <button
+                onClick={() => setEditingSections(null)}
+                className="text-zinc-500 hover:text-zinc-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+              <strong>{editingSections.employeeName}</strong> — Bearbeiten Sie die einzelnen Abschnitte
+            </p>
+            
+            <div className="space-y-4 mb-6">
+              {editingSections.sections.map((section, idx) => {
+                const category = categories.find(c => c.key === section.categoryKey);
+                return (
+                  <div key={section.id} className="rounded border p-4 dark:border-zinc-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">
+                        {idx + 1}. {category?.label || section.categoryKey}
+                      </span>
+                      {section.rating && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-700">
+                          Note {section.rating}
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      className="w-full rounded border px-3 py-2 text-sm min-h-[120px] font-serif dark:bg-zinc-900 dark:border-zinc-600"
+                      value={sectionContents[section.id] || ""}
+                      onChange={(e) => setSectionContents({ ...sectionContents, [section.id]: e.target.value })}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setEditingSections(null)}
+                className="rounded border px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={saveSections}
+                disabled={savingSections}
+                className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {savingSections ? "Speichere..." : "Änderungen speichern"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Preview Modal */}
       {previewCertificate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-auto p-4">
@@ -418,6 +571,21 @@ export default function CertificatesPage() {
                 className="rounded border px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
               >
                 📋 Kopieren
+              </button>
+              <button
+                onClick={() => downloadPDF(previewCertificate.id)}
+                className="rounded border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700 hover:bg-blue-100"
+              >
+                📄 PDF herunterladen
+              </button>
+              <button
+                onClick={() => {
+                  openSectionEditor(previewCertificate);
+                  setPreviewCertificate(null);
+                }}
+                className="rounded border px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              >
+                ✏️ Bearbeiten
               </button>
               <button
                 onClick={() => setPreviewCertificate(null)}
@@ -474,12 +642,26 @@ export default function CertificatesPage() {
                 </div>
                 <div className="flex gap-2">
                   {cert.fullContent && (
-                    <button
-                      onClick={() => setPreviewCertificate(cert)}
-                      className="rounded border px-3 py-1.5 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                    >
-                      Vorschau
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setPreviewCertificate(cert)}
+                        className="rounded border px-3 py-1.5 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                      >
+                        Vorschau
+                      </button>
+                      <button
+                        onClick={() => downloadPDF(cert.id)}
+                        className="rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
+                      >
+                        PDF
+                      </button>
+                      <button
+                        onClick={() => openSectionEditor(cert)}
+                        className="rounded border px-3 py-1.5 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                      >
+                        Bearbeiten
+                      </button>
+                    </>
                   )}
                   {cert.status === "DRAFT" && (
                     <>
