@@ -137,6 +137,10 @@ model Employee {
   documents          EmployeeDocument[]
   reminders          Reminder[]
   certificates       WorkCertificate[]
+  projectApplications ProjectApplication[]
+  vehicleAssignments VehicleAssignment[]
+  hrTickets          HRTicket[]
+  qualifications     EmployeeQualification[]
   lockAll            Boolean              @default(false)
   lockFirstName      Boolean              @default(false)
   lockLastName       Boolean              @default(false)
@@ -323,6 +327,12 @@ model User {
   completedLifecycleTasks LifecycleTask[]    @relation("LifecycleTaskCompletedBy")
   certificatesCreated     WorkCertificate[]  @relation("CertificateCreatedBy")
   certificatesApproved    WorkCertificate[]  @relation("CertificateApprovedBy")
+  projectsCreated         InternalProject[]  @relation("ProjectCreatedBy")
+  applicationsApproved    ProjectApplication[] @relation("ApplicationApprovedBy")
+  vehicleCostsCreated     VehicleCost[]      @relation("VehicleCostCreatedBy")
+  ticketsCreated          HRTicket[]         @relation("TicketCreatedBy")
+  ticketsAssigned         HRTicket[]         @relation("TicketAssignedTo")
+  ticketComments          HRTicketComment[]
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 }
@@ -642,4 +652,265 @@ model WorkCertificateSection {
   updatedAt      DateTime            @updatedAt
 
   @@index([certificateId])
+}
+
+// --- Interne Projekte (Internal Project Applications) ---
+
+enum ProjectApplicationStatus {
+  PENDING       // Waiting for approval
+  APPROVED      // Approved
+  REJECTED      // Rejected
+  WITHDRAWN     // Withdrawn by employee
+}
+
+model InternalProject {
+  id            String              @id @default(cuid())
+  name          String
+  description   String?             @db.Text
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Decimal?            @db.Decimal(10, 2)
+  maxParticipants Int?
+  isActive      Boolean             @default(true)
+  createdById   String?
+  createdBy     User?               @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  applications  ProjectApplication[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model ProjectApplication {
+  id            String                    @id @default(cuid())
+  project       InternalProject           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  employee      Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId    String
+  status        ProjectApplicationStatus  @default(PENDING)
+  motivation    String?                   @db.Text  // Why does employee want to join?
+  hoursPerWeek  Int?                      // Proposed hours per week
+  notes         String?                   @db.Text
+  approvedById  String?
+  approvedBy    User?                     @relation("ApplicationApprovedBy", fields: [approvedById], references: [id])
+  approvedAt    DateTime?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  @@unique([projectId, employeeId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+// --- Fuhrpark Management (Fleet Management) ---
+
+enum VehicleType {
+  CAR
+  VAN
+  TRUCK
+  MOTORCYCLE
+  EBIKE
+  OTHER
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  DECOMMISSIONED
+}
+
+model Vehicle {
+  id              String          @id @default(cuid())
+  licensePlate    String          @unique
+  brand           String
+  model           String
+  type            VehicleType     @default(CAR)
+  status          VehicleStatus   @default(AVAILABLE)
+  year            Int?
+  color           String?
+  vin             String?         @unique  // Vehicle Identification Number
+  leasingCompany  String?
+  leasingStart    DateTime?
+  leasingEnd      DateTime?
+  leasingMonthly  Decimal?        @db.Decimal(10, 2)
+  fuelType        String?         // Diesel, Benzin, Elektro, Hybrid
+  mileage         Int?            // Current mileage
+  notes           String?         @db.Text
+  assignments     VehicleAssignment[]
+  costs           VehicleCost[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model VehicleAssignment {
+  id            String      @id @default(cuid())
+  vehicle       Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId     String
+  employee      Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId    String
+  startDate     DateTime    @default(now())
+  endDate       DateTime?
+  isActive      Boolean     @default(true)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([vehicleId])
+  @@index([employeeId])
+  @@index([isActive])
+}
+
+enum VehicleCostType {
+  LEASING
+  FUEL
+  REPAIR
+  MAINTENANCE
+  INSURANCE
+  TAX
+  TOLL
+  PARKING
+  CLEANING
+  OTHER
+}
+
+model VehicleCost {
+  id          String          @id @default(cuid())
+  vehicle     Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId   String
+  type        VehicleCostType
+  amount      Decimal         @db.Decimal(10, 2)
+  date        DateTime
+  description String?
+  invoiceNo   String?
+  mileage     Int?            // Mileage at time of cost
+  createdById String?
+  createdBy   User?           @relation("VehicleCostCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([vehicleId])
+  @@index([type])
+  @@index([date])
+}
+
+// --- HR Tickets ---
+
+enum HRTicketCategory {
+  BONUS           // Bonusabrechnung
+  SALARY          // Gehaltsabrechnung
+  ADDRESS_CHANGE  // Adressänderung
+  BANK_CHANGE     // Bankverbindung ändern
+  CONTRACT        // Vertragsfragen
+  VACATION        // Urlaubsfragen
+  SICK_LEAVE      // Krankmeldung
+  ONBOARDING      // Onboarding-Fragen
+  OFFBOARDING     // Offboarding-Fragen
+  CERTIFICATE     // Zeugnisse
+  OTHER           // Sonstiges
+}
+
+enum HRTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum HRTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING       // Waiting for info
+  RESOLVED
+  CLOSED
+}
+
+model HRTicket {
+  id            String            @id @default(cuid())
+  ticketNumber  String            @unique  // HR-2024-0001
+  title         String
+  description   String            @db.Text
+  category      HRTicketCategory
+  priority      HRTicketPriority  @default(MEDIUM)
+  status        HRTicketStatus    @default(OPEN)
+  employee      Employee?         @relation(fields: [employeeId], references: [id])
+  employeeId    String?           // Optional: which employee is affected
+  createdBy     User              @relation("TicketCreatedBy", fields: [createdById], references: [id])
+  createdById   String
+  assignedTo    User?             @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  assignedToId  String?
+  resolvedAt    DateTime?
+  closedAt      DateTime?
+  comments      HRTicketComment[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([createdById])
+  @@index([assignedToId])
+}
+
+model HRTicketComment {
+  id          String    @id @default(cuid())
+  ticket      HRTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId    String
+  content     String    @db.Text
+  isInternal  Boolean   @default(false)  // Internal notes not visible to creator
+  author      User      @relation(fields: [authorId], references: [id])
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ticketId])
+}
+
+// --- Qualifikationen (Qualifications / Certifications) ---
+
+enum QualificationType {
+  FIRST_AID           // Ersthelfer
+  FIRE_SAFETY         // Brandschutzhelfer
+  SAFETY_OFFICER      // Sicherheitsbeauftragter
+  DATA_PROTECTION     // Datenschutzbeauftragter
+  WORKS_COUNCIL       // Betriebsrat
+  APPRENTICE_TRAINER  // Ausbilder
+  FORKLIFT            // Staplerführerschein
+  CRANE               // Kranführerschein
+  HAZMAT              // Gefahrgut
+  ELECTRICAL          // Elektrofachkraft
+  LANGUAGE            // Sprachzertifikat
+  IT_CERTIFICATION    // IT-Zertifizierung
+  PROJECT_MGMT        // Projektmanagement (PMP, PRINCE2)
+  OTHER               // Sonstiges
+}
+
+model Qualification {
+  id              String              @id @default(cuid())
+  type            QualificationType
+  name            String              // e.g. "Ersthelfer Grundkurs"
+  description     String?
+  isCompanyWide   Boolean             @default(false)  // Required for company compliance
+  validityMonths  Int?                // How long is cert valid (null = permanent)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  employeeQuals   EmployeeQualification[]
+}
+
+model EmployeeQualification {
+  id              String        @id @default(cuid())
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId      String
+  qualification   Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+  qualificationId String
+  obtainedDate    DateTime
+  expiryDate      DateTime?     // When certification expires
+  certificateNo   String?       // Certificate number
+  issuer          String?       // Who issued the certification
+  notes           String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([employeeId, qualificationId])
+  @@index([employeeId])
+  @@index([qualificationId])
+  @@index([expiryDate])
 }

@@ -23,7 +23,11 @@ const NAV_LINKS: NavItem[] = [
   { href: "/lifecycle/onboarding", label: "Onboarding", icon: "user-plus", roles: ["ADMIN", "HR", "UNIT_LEAD"], group: "lifecycle" },
   { href: "/lifecycle/offboarding", label: "Offboarding", icon: "user-minus", roles: ["ADMIN", "HR", "UNIT_LEAD"], group: "lifecycle" },
   { href: "/certificates", label: "Zeugnisse", icon: "file-text", roles: ["ADMIN", "HR"], group: "hr" },
-  { href: "/admin/reminders", label: "Erinnerungen", icon: "bell", roles: ["ADMIN", "UNIT_LEAD"], group: "hr" },
+  { href: "/tickets", label: "HR-Tickets", icon: "ticket", roles: ["ADMIN", "HR", "UNIT_LEAD"], group: "hr" },
+  { href: "/qualifications", label: "Qualifikationen", icon: "badge", roles: ["ADMIN", "HR"], group: "hr" },
+  { href: "/fleet", label: "Fuhrpark", icon: "car", roles: ["ADMIN", "HR"], group: "hr" },
+  { href: "/projects", label: "Projekte", icon: "folder", roles: ["ADMIN", "HR"], group: "hr" },
+  { href: "/admin/reminders", label: "Erinnerungen", icon: "bell", roles: ["ADMIN", "UNIT_LEAD"], group: "admin" },
   { href: "/admin/lifecycle", label: "Vorlagen", icon: "template", roles: ["ADMIN"], group: "admin" },
   { href: "/admin/users", label: "Benutzer", icon: "shield", roles: ["ADMIN"], group: "admin" },
   { href: "/settings", label: "Einstellungen", icon: "settings", roles: ["ADMIN"], group: "admin" },
@@ -49,6 +53,10 @@ function NavIcon({ name, className = "w-5 h-5" }: { name: string; className?: st
     shield: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
     settings: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />,
     logout: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />,
+    ticket: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />,
+    badge: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />,
+    car: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 17h.01M16 17h.01M4 11l1.664-4.993A2 2 0 017.565 4h8.87a2 2 0 011.9 1.38L20 11M4 11h16M4 11v6a1 1 0 001 1h1a1 1 0 001-1v-1h10v1a1 1 0 001 1h1a1 1 0 001-1v-6" />,
+    folder: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />,
   };
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
