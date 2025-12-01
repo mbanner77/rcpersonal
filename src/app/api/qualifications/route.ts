@@ -53,7 +53,7 @@ export async function GET(req: Request) {
     if (type) {
       const employees = await db.employeeQualification.findMany({
         where: {
-          qualification: { type: type as string },
+          qualification: { type: type as "FIRST_AID" | "FIRE_SAFETY" | "SAFETY_OFFICER" | "DATA_PROTECTION" | "WORKS_COUNCIL" | "APPRENTICE_TRAINER" | "FORKLIFT" | "CRANE" | "HAZMAT" | "ELECTRICAL" | "LANGUAGE" | "IT_CERTIFICATION" | "PROJECT_MGMT" | "OTHER" },
           isActive: true,
           employee: { status: "ACTIVE" },
         },
