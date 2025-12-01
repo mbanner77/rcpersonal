@@ -6,11 +6,35 @@ import { findUpcomingJubilees, isBirthday, parseJubileeYears, type EmployeeLike 
 
 export default async function Home() {
   // Fetch all data in parallel
-  const [settings, employees, onboardingTasks, offboardingTasks] = await Promise.all([
+  const [settings, employees, onboardingTasks, offboardingTasks, ticketStats, assetStats, vehicleStats] = await Promise.all([
     db.setting.findUnique({ where: { id: 1 } }),
     db.employee.findMany({ orderBy: { lastName: "asc" } }),
     (db as unknown as { taskAssignment: { count: (args: { where: { type: string; status?: { isDone: boolean } } }) => Promise<number> } }).taskAssignment?.count?.({ where: { type: "ONBOARDING" } }).catch(() => 0) ?? Promise.resolve(0),
     (db as unknown as { taskAssignment: { count: (args: { where: { type: string; status?: { isDone: boolean } } }) => Promise<number> } }).taskAssignment?.count?.({ where: { type: "OFFBOARDING" } }).catch(() => 0) ?? Promise.resolve(0),
+    // HR Tickets
+    (async () => {
+      try {
+        const open = await (db as unknown as { hRTicket: { count: (args: { where: { status: string } }) => Promise<number> } }).hRTicket.count({ where: { status: "OPEN" } });
+        return { open };
+      } catch { return { open: 0 }; }
+    })(),
+    // Assets
+    (async () => {
+      try {
+        const [total, pending] = await Promise.all([
+          (db as unknown as { asset: { count: () => Promise<number> } }).asset.count(),
+          (db as unknown as { assetTransfer: { count: (args: { where: { status: string } }) => Promise<number> } }).assetTransfer.count({ where: { status: "PENDING" } }),
+        ]);
+        return { total, pending };
+      } catch { return { total: 0, pending: 0 }; }
+    })(),
+    // Vehicles
+    (async () => {
+      try {
+        const total = await (db as unknown as { vehicle: { count: () => Promise<number> } }).vehicle.count();
+        return { total };
+      } catch { return { total: 0 }; }
+    })(),
   ]);
   
   const years = parseJubileeYears(settings);
@@ -175,6 +199,64 @@ export default async function Home() {
             </div>
           </div>
         </Link>
+      </section>
+
+      {/* HR-Tools Section */}
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+          </div>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">HR-Tools</h2>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Link href="/tickets" className="group rounded-xl border border-zinc-200 bg-white p-5 transition hover:border-blue-300 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-blue-700">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+              </div>
+              <div>
+                <div className="font-semibold text-zinc-900 dark:text-zinc-50">HR-Tickets</div>
+                <div className="text-sm text-zinc-500">
+                  {ticketStats.open > 0 ? (
+                    <span className="text-blue-600 dark:text-blue-400">{ticketStats.open} offene Anfragen</span>
+                  ) : (
+                    "Keine offenen Anfragen"
+                  )}
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/hardware" className="group rounded-xl border border-zinc-200 bg-white p-5 transition hover:border-cyan-300 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-cyan-700">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-100 text-cyan-600 dark:bg-cyan-900/50 dark:text-cyan-400">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              </div>
+              <div>
+                <div className="font-semibold text-zinc-900 dark:text-zinc-50">Hardware</div>
+                <div className="text-sm text-zinc-500">
+                  {assetStats.total} Geräte
+                  {assetStats.pending > 0 && (
+                    <span className="ml-1 text-orange-600 dark:text-orange-400">· {assetStats.pending} Übertragungen</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/fleet" className="group rounded-xl border border-zinc-200 bg-white p-5 transition hover:border-violet-300 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-700">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-400">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+              </div>
+              <div>
+                <div className="font-semibold text-zinc-900 dark:text-zinc-50">Fuhrpark</div>
+                <div className="text-sm text-zinc-500">{vehicleStats.total} Fahrzeuge</div>
+              </div>
+            </div>
+          </Link>
+        </div>
       </section>
 
       {/* Quick Actions */}
