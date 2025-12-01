@@ -87,7 +87,7 @@ export async function GET() {
     return Response.json(
       tickets.map(t => ({
         ...t,
-        categoryLabel: CATEGORY_LABELS[t.category] ?? t.category,
+        categoryLabel: CATEGORY_LABELS[t.legacyCategory] ?? t.legacyCategory,
         statusLabel: STATUS_LABELS[t.status] ?? t.status,
         priorityLabel: PRIORITY_LABELS[t.priority] ?? t.priority,
       }))
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
         ticketNumber,
         title: parsed.data.title,
         description: parsed.data.description,
-        category: parsed.data.category,
+        legacyCategory: parsed.data.category,
         priority: parsed.data.priority ?? "MEDIUM",
         employeeId: parsed.data.employeeId,
         createdById: user.id,
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
 
     return Response.json({
       ...ticket,
-      categoryLabel: CATEGORY_LABELS[ticket.category],
+      categoryLabel: CATEGORY_LABELS[ticket.legacyCategory],
       statusLabel: STATUS_LABELS[ticket.status],
       priorityLabel: PRIORITY_LABELS[ticket.priority],
     });
@@ -177,7 +177,7 @@ export async function PATCH(req: Request) {
 
     return Response.json({
       ...ticket,
-      categoryLabel: CATEGORY_LABELS[ticket.category],
+      categoryLabel: CATEGORY_LABELS[ticket.legacyCategory],
       statusLabel: STATUS_LABELS[ticket.status],
       priorityLabel: PRIORITY_LABELS[ticket.priority],
     });
