@@ -90,6 +90,7 @@ export default function HardwarePage() {
   const [showPrintForm, setShowPrintForm] = useState<Transfer | null>(null);
 
   // Create form
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("LAPTOP");
@@ -146,26 +147,36 @@ export default function HardwarePage() {
 
   async function createAsset(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/assets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description: description || undefined,
-        category,
-        serial: serial || undefined,
-        manufacturer: manufacturer || undefined,
-        model: model || undefined,
-        purchaseDate: purchaseDate ? new Date(purchaseDate).toISOString() : undefined,
-        purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
-        currentValue: currentValue ? parseFloat(currentValue) : undefined,
-        condition,
-      }),
-    });
-    if (res.ok) {
-      setShowCreate(false);
-      resetCreateForm();
-      loadData();
+    setCreating(true);
+    try {
+      const res = await fetch("/api/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description: description || undefined,
+          category,
+          serial: serial || undefined,
+          manufacturer: manufacturer || undefined,
+          model: model || undefined,
+          purchaseDate: purchaseDate ? new Date(purchaseDate).toISOString() : undefined,
+          purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
+          currentValue: currentValue ? parseFloat(currentValue) : undefined,
+          condition,
+        }),
+      });
+      if (res.ok) {
+        setShowCreate(false);
+        resetCreateForm();
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(`Fehler: ${err.error || JSON.stringify(err)}`);
+      }
+    } catch (err) {
+      alert(`Fehler: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -653,8 +664,8 @@ export default function HardwarePage() {
                 <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300">
                   Abbrechen
                 </button>
-                <button type="submit" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900">
-                  Erstellen
+                <button type="submit" disabled={creating} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 disabled:opacity-50">
+                  {creating ? "Erstelle..." : "Erstellen"}
                 </button>
               </div>
             </form>
