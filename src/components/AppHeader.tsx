@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import LogoutButton from "@/components/LogoutButton";
 import { useSession } from "@/hooks/useSession";
@@ -40,6 +40,12 @@ const GROUP_LABELS: Record<string, string> = {
   admin: "Administration",
 };
 
+const GROUP_ICONS: Record<string, string> = {
+  lifecycle: "refresh",
+  hr: "briefcase",
+  admin: "cog",
+};
+
 // Simple icon component
 function NavIcon({ name, className = "w-5 h-5" }: { name: string; className?: string }) {
   const icons: Record<string, React.ReactNode> = {
@@ -57,11 +63,93 @@ function NavIcon({ name, className = "w-5 h-5" }: { name: string; className?: st
     badge: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />,
     car: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 17h.01M16 17h.01M4 11l1.664-4.993A2 2 0 017.565 4h8.87a2 2 0 011.9 1.38L20 11M4 11h16M4 11v6a1 1 0 001 1h1a1 1 0 001-1v-1h10v1a1 1 0 001 1h1a1 1 0 001-1v-6" />,
     folder: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />,
+    refresh: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />,
+    briefcase: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />,
+    cog: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />,
+    chevron: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />,
   };
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       {icons[name] || icons.home}
     </svg>
+  );
+}
+
+// Dropdown menu component
+function NavDropdown({ 
+  label, 
+  icon, 
+  links, 
+  isActive,
+  pathname 
+}: { 
+  label: string; 
+  icon: string; 
+  links: NavItem[]; 
+  isActive: (href: string) => boolean;
+  pathname: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasActiveLink = links.some(l => isActive(l.href));
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          hasActiveLink
+            ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
+            : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-zinc-800"
+        }`}
+      >
+        <NavIcon name={icon} className="w-4 h-4" />
+        <span>{label}</span>
+        <NavIcon name="chevron" className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 w-52 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800 z-50">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setOpen(false)}
+              className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                isActive(link.href)
+                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-700 dark:text-white"
+                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700/50 dark:hover:text-white"
+              }`}
+            >
+              <NavIcon name={link.icon} className="w-4 h-4 text-zinc-400" />
+              <span>{link.label}</span>
+              {isActive(link.href) && (
+                <svg className="w-4 h-4 ml-auto text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -103,7 +191,7 @@ export default function AppHeader() {
   };
 
   const linkClasses = (href: string) =>
-    `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+    `flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
       isActive(href)
         ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
         : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-zinc-800"
@@ -142,43 +230,48 @@ export default function AppHeader() {
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-1">
+              {/* Main links as direct buttons */}
               {mainLinks.map((link) => (
                 <Link key={link.href} href={link.href} className={linkClasses(link.href)}>
+                  <NavIcon name={link.icon} className="w-4 h-4" />
                   {link.label}
                 </Link>
               ))}
               
+              {/* Lifecycle dropdown */}
               {lifecycleLinks.length > 0 && (
                 <>
-                  <span className="mx-2 h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
-                  {lifecycleLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className={linkClasses(link.href)}>
-                      {link.label}
-                    </Link>
-                  ))}
+                  <span className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+                  <NavDropdown 
+                    label={GROUP_LABELS.lifecycle}
+                    icon={GROUP_ICONS.lifecycle}
+                    links={lifecycleLinks}
+                    isActive={isActive}
+                    pathname={pathname}
+                  />
                 </>
               )}
 
+              {/* HR Tools dropdown */}
               {hrLinks.length > 0 && (
-                <>
-                  <span className="mx-2 h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
-                  {hrLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className={linkClasses(link.href)}>
-                      {link.label}
-                    </Link>
-                  ))}
-                </>
+                <NavDropdown 
+                  label={GROUP_LABELS.hr}
+                  icon={GROUP_ICONS.hr}
+                  links={hrLinks}
+                  isActive={isActive}
+                  pathname={pathname}
+                />
               )}
 
+              {/* Admin dropdown */}
               {adminLinks.length > 0 && (
-                <>
-                  <span className="mx-2 h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
-                  {adminLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className={linkClasses(link.href)}>
-                      {link.label}
-                    </Link>
-                  ))}
-                </>
+                <NavDropdown 
+                  label={GROUP_LABELS.admin}
+                  icon={GROUP_ICONS.admin}
+                  links={adminLinks}
+                  isActive={isActive}
+                  pathname={pathname}
+                />
               )}
             </nav>
 
