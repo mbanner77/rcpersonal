@@ -2,13 +2,16 @@ import { db } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/auth";
 
 // Standard German work certificate text blocks
+// Following the official German "Zeugnissprache" conventions
 const SEED_DATA = {
   categories: [
     { key: "INTRO", label: "Einleitung", description: "Einführung und persönliche Daten", orderIndex: 0 },
-    { key: "TASKS", label: "Tätigkeitsbeschreibung", description: "Aufgaben und Verantwortlichkeiten", orderIndex: 1 },
-    { key: "PERFORMANCE", label: "Leistungsbeurteilung", description: "Arbeitsleistung und Ergebnisse", orderIndex: 2 },
-    { key: "BEHAVIOR", label: "Verhalten", description: "Sozialverhalten und Zusammenarbeit", orderIndex: 3 },
-    { key: "CLOSING", label: "Schlussformel", description: "Abschluss und Zukunftswünsche", orderIndex: 4 },
+    { key: "COMPANY", label: "Unternehmensbeschreibung", description: "Kurze Vorstellung des Unternehmens", orderIndex: 1 },
+    { key: "TASKS", label: "Tätigkeitsbeschreibung", description: "Aufgaben und Verantwortlichkeiten", orderIndex: 2 },
+    { key: "SKILLS", label: "Fachkenntnisse", description: "Besondere Fähigkeiten und Qualifikationen", orderIndex: 3 },
+    { key: "PERFORMANCE", label: "Leistungsbeurteilung", description: "Arbeitsleistung und Ergebnisse", orderIndex: 4 },
+    { key: "BEHAVIOR", label: "Verhalten", description: "Sozialverhalten und Zusammenarbeit", orderIndex: 5 },
+    { key: "CLOSING", label: "Schlussformel", description: "Abschluss und Zukunftswünsche", orderIndex: 6 },
   ],
   textBlocks: [
     // INTRO - Einleitung
@@ -24,10 +27,33 @@ const SEED_DATA = {
       title: "Einleitung mit Abteilung",
       rating: 2,
       isDefault: false,
-      content: `{fullName}, geboren am {birthDate}, war vom {startDate} bis zum {endDate} in unserem Unternehmen in der Abteilung {department} als {jobTitle} beschäftigt.`,
+      content: `{fullName}, geboren am {birthDate}, trat am {startDate} in unser Unternehmen ein und war bis zum {endDate} in der Abteilung {department} als {jobTitle} beschäftigt.`,
+    },
+    {
+      categoryKey: "INTRO",
+      title: "Zwischenzeugnis Einleitung",
+      rating: 2,
+      isDefault: false,
+      content: `{fullName}, geboren am {birthDate}, ist seit dem {startDate} in unserem Unternehmen als {jobTitle} tätig.`,
     },
 
-    // TASKS - Tätigkeitsbeschreibung (same for all ratings)
+    // COMPANY - Unternehmensbeschreibung
+    {
+      categoryKey: "COMPANY",
+      title: "IT-Unternehmen",
+      rating: 2,
+      isDefault: true,
+      content: `Unser Unternehmen ist ein führender Anbieter im Bereich IT-Dienstleistungen und Softwareentwicklung. Mit über 100 Mitarbeitern betreuen wir nationale und internationale Kunden aus verschiedenen Branchen.`,
+    },
+    {
+      categoryKey: "COMPANY",
+      title: "Beratungsunternehmen",
+      rating: 2,
+      isDefault: false,
+      content: `Unser Unternehmen ist eine etablierte Unternehmensberatung mit Fokus auf digitale Transformation und Prozessoptimierung. Wir unterstützen mittelständische und große Unternehmen bei der Umsetzung ihrer strategischen Ziele.`,
+    },
+
+    // TASKS - Tätigkeitsbeschreibung
     {
       categoryKey: "TASKS",
       title: "Allgemeine Tätigkeitsbeschreibung",
@@ -40,6 +66,71 @@ const SEED_DATA = {
 • Erstellung von Dokumentationen und Reports
 • Mitwirkung bei der Optimierung von Prozessen und Abläufen
 • Unterstützung bei fachbereichsübergreifenden Projekten`,
+    },
+    {
+      categoryKey: "TASKS",
+      title: "IT/Entwicklung",
+      rating: 2,
+      isDefault: false,
+      content: `Zu {possessive} Hauptaufgaben gehörten:
+
+• Konzeption, Entwicklung und Wartung von Softwarelösungen
+• Technische Analyse von Kundenanforderungen
+• Code Reviews und Qualitätssicherung
+• Zusammenarbeit im agilen Team nach Scrum-Methodik
+• Dokumentation von technischen Spezifikationen
+• Betreuung und Weiterentwicklung bestehender Systeme`,
+    },
+    {
+      categoryKey: "TASKS",
+      title: "Projektmanagement",
+      rating: 2,
+      isDefault: false,
+      content: `{fullName} war verantwortlich für:
+
+• Planung, Steuerung und Überwachung von Projekten
+• Führung und Koordination von Projektteams
+• Stakeholder-Management und Kundenkommunikation
+• Budget- und Ressourcenplanung
+• Risikomanagement und Qualitätssicherung
+• Erstellung von Projektberichten und Präsentationen`,
+    },
+    {
+      categoryKey: "TASKS",
+      title: "Personalwesen/HR",
+      rating: 2,
+      isDefault: false,
+      content: `Der Aufgabenbereich umfasste:
+
+• Betreuung des gesamten Employee Lifecycles
+• Recruiting und Bewerbermanagement
+• Personaladministration und Vertragswesen
+• Beratung von Führungskräften in personalrelevanten Fragen
+• Durchführung von Mitarbeitergesprächen
+• Entwicklung und Umsetzung von HR-Prozessen`,
+    },
+
+    // SKILLS - Fachkenntnisse
+    {
+      categoryKey: "SKILLS",
+      title: "Sehr gut (Note 1)",
+      rating: 1,
+      isDefault: true,
+      content: `{fullName} verfügt über hervorragende Fachkenntnisse, die {pronoun} stets gewinnbringend einsetzte. {Pronoun} bildete sich kontinuierlich fort und war immer auf dem neuesten Stand der fachlichen Entwicklungen. {Possessive} analytische Denkweise und {possessive} ausgeprägte Problemlösungskompetenz waren für das Team von großem Wert.`,
+    },
+    {
+      categoryKey: "SKILLS",
+      title: "Gut (Note 2)",
+      rating: 2,
+      isDefault: true,
+      content: `{fullName} verfügt über fundierte Fachkenntnisse, die {pronoun} zielgerichtet einsetzte. {Pronoun} zeigte stets Interesse an fachlicher Weiterbildung und hielt {possessive} Wissen aktuell. {Possessive} analytische Denkweise und Problemlösungskompetenz überzeugten.`,
+    },
+    {
+      categoryKey: "SKILLS",
+      title: "Befriedigend (Note 3)",
+      rating: 3,
+      isDefault: true,
+      content: `{fullName} verfügt über solide Fachkenntnisse, die {pronoun} sachgerecht einsetzte. {Pronoun} war bereit, sich fachlich weiterzubilden.`,
     },
 
     // PERFORMANCE - Leistungsbeurteilung
