@@ -794,18 +794,19 @@ model VehicleCost {
 
 // --- HR Tickets ---
 
-enum HRTicketCategory {
-  BONUS           // Bonusabrechnung
-  SALARY          // Gehaltsabrechnung
-  ADDRESS_CHANGE  // Adressänderung
-  BANK_CHANGE     // Bankverbindung ändern
-  CONTRACT        // Vertragsfragen
-  VACATION        // Urlaubsfragen
-  SICK_LEAVE      // Krankmeldung
-  ONBOARDING      // Onboarding-Fragen
-  OFFBOARDING     // Offboarding-Fragen
-  CERTIFICATE     // Zeugnisse
-  OTHER           // Sonstiges
+// Configurable ticket categories
+model TicketCategory {
+  id          String     @id @default(cuid())
+  key         String     @unique  // Internal key e.g. "BONUS", "SALARY"
+  label       String              // Display label e.g. "Bonusabrechnung"
+  description String?
+  color       String?             // Color for UI display
+  icon        String?             // Icon name
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  tickets     HRTicket[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 enum HRTicketPriority {
@@ -828,7 +829,8 @@ model HRTicket {
   ticketNumber  String            @unique  // HR-2024-0001
   title         String
   description   String            @db.Text
-  category      HRTicketCategory
+  category      TicketCategory    @relation(fields: [categoryId], references: [id])
+  categoryId    String
   priority      HRTicketPriority  @default(MEDIUM)
   status        HRTicketStatus    @default(OPEN)
   employee      Employee?         @relation(fields: [employeeId], references: [id])
@@ -844,7 +846,7 @@ model HRTicket {
   updatedAt     DateTime          @updatedAt
 
   @@index([status])
-  @@index([category])
+  @@index([categoryId])
   @@index([createdById])
   @@index([assignedToId])
 }
@@ -865,33 +867,35 @@ model HRTicketComment {
 
 // --- Qualifikationen (Qualifications / Certifications) ---
 
-enum QualificationType {
-  FIRST_AID           // Ersthelfer
-  FIRE_SAFETY         // Brandschutzhelfer
-  SAFETY_OFFICER      // Sicherheitsbeauftragter
-  DATA_PROTECTION     // Datenschutzbeauftragter
-  WORKS_COUNCIL       // Betriebsrat
-  APPRENTICE_TRAINER  // Ausbilder
-  FORKLIFT            // Staplerführerschein
-  CRANE               // Kranführerschein
-  HAZMAT              // Gefahrgut
-  ELECTRICAL          // Elektrofachkraft
-  LANGUAGE            // Sprachzertifikat
-  IT_CERTIFICATION    // IT-Zertifizierung
-  PROJECT_MGMT        // Projektmanagement (PMP, PRINCE2)
-  OTHER               // Sonstiges
+// Configurable qualification categories/types
+model QualificationCategory {
+  id              String          @id @default(cuid())
+  key             String          @unique  // Internal key e.g. "FIRST_AID"
+  label           String                   // Display label e.g. "Ersthelfer"
+  description     String?
+  icon            String?                  // Emoji or icon name
+  color           String?                  // Color for UI
+  isCompanyWide   Boolean         @default(false)  // Required for company compliance
+  defaultValidityMonths Int?               // Default validity for this category
+  isActive        Boolean         @default(true)
+  sortOrder       Int             @default(0)
+  qualifications  Qualification[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 model Qualification {
-  id              String              @id @default(cuid())
-  type            QualificationType
-  name            String              // e.g. "Ersthelfer Grundkurs"
+  id              String                @id @default(cuid())
+  category        QualificationCategory @relation(fields: [categoryId], references: [id])
+  categoryId      String
+  name            String                // e.g. "Ersthelfer Grundkurs"
   description     String?
-  isCompanyWide   Boolean             @default(false)  // Required for company compliance
-  validityMonths  Int?                // How long is cert valid (null = permanent)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  validityMonths  Int?                  // How long is cert valid (null = permanent)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
   employeeQuals   EmployeeQualification[]
+
+  @@index([categoryId])
 }
 
 model EmployeeQualification {
