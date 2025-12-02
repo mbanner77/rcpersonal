@@ -55,6 +55,21 @@ const QUALIFICATION_TYPES = [
   { value: "OTHER", label: "Sonstiges", icon: "📋", color: "bg-gray-100 text-gray-700" },
 ];
 
+// SAP Certification Categories for visual grouping
+const SAP_CATEGORIES = [
+  { key: "S/4HANA", label: "SAP S/4HANA", icon: "🏢", color: "from-blue-500 to-blue-600", keywords: ["S/4HANA"] },
+  { key: "BTP", label: "SAP BTP", icon: "☁️", color: "from-sky-500 to-sky-600", keywords: ["BTP", "Build Low-Code", "Cloud Application Programming"] },
+  { key: "ABAP", label: "SAP ABAP", icon: "💻", color: "from-indigo-500 to-indigo-600", keywords: ["ABAP", "NetWeaver"] },
+  { key: "Fiori", label: "SAP Fiori/UI5", icon: "🎨", color: "from-purple-500 to-purple-600", keywords: ["Fiori", "SAPUI5"] },
+  { key: "Analytics", label: "SAP Analytics", icon: "📊", color: "from-emerald-500 to-emerald-600", keywords: ["Analytics Cloud", "BW/4HANA", "BusinessObjects", "Datasphere"] },
+  { key: "HANA", label: "SAP HANA", icon: "🗄️", color: "from-orange-500 to-orange-600", keywords: ["HANA Cloud", "HANA (Edition", "HANA Modeling"] },
+  { key: "SuccessFactors", label: "SAP SuccessFactors", icon: "👥", color: "from-pink-500 to-pink-600", keywords: ["SuccessFactors"] },
+  { key: "Ariba", label: "SAP Ariba", icon: "🛒", color: "from-amber-500 to-amber-600", keywords: ["Ariba"] },
+  { key: "CX", label: "SAP CX", icon: "🎯", color: "from-rose-500 to-rose-600", keywords: ["Sales Cloud", "Service Cloud", "Commerce Cloud", "Marketing Cloud", "Customer Data", "Emarsys"] },
+  { key: "SCM", label: "SAP SCM/Logistik", icon: "🚚", color: "from-teal-500 to-teal-600", keywords: ["Warehouse Management", "Transportation", "IBP", "Digital Manufacturing"] },
+  { key: "Other", label: "Weitere SAP", icon: "⚙️", color: "from-slate-500 to-slate-600", keywords: ["Concur", "Fieldglass", "Signavio", "Solution Manager", "Activate", "Security"] },
+];
+
 export default function QualificationsPage() {
   const { user } = useSession();
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
@@ -66,6 +81,8 @@ export default function QualificationsPage() {
   const [showAssign, setShowAssign] = useState(false);
   const [showExpiring, setShowExpiring] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [selectedSapCategory, setSelectedSapCategory] = useState<string | null>(null);
+  const [showSapSection, setShowSapSection] = useState(true);
 
   // Assign form
   const [assignEmployeeId, setAssignEmployeeId] = useState("");
@@ -162,6 +179,33 @@ export default function QualificationsPage() {
   const totalFirstAiders = qualifications.find((q) => q.type === "FIRST_AID")?.employeeCount || 0;
   const totalFireSafety = qualifications.find((q) => q.type === "FIRE_SAFETY")?.employeeCount || 0;
 
+  // SAP Qualifications - filter IT certs that contain "SAP"
+  const sapQualifications = qualifications.filter(q => 
+    q.type === "IT_CERTIFICATION" && q.name.toLowerCase().includes("sap")
+  );
+  const totalSapCertifications = sapQualifications.reduce((sum, q) => sum + q.employeeCount, 0);
+
+  // Group SAP qualifications by category
+  const getSapCategory = (name: string) => {
+    for (const cat of SAP_CATEGORIES) {
+      if (cat.keywords.some(kw => name.includes(kw))) {
+        return cat.key;
+      }
+    }
+    return "Other";
+  };
+
+  const sapByCategory = SAP_CATEGORIES.map(cat => {
+    const certs = sapQualifications.filter(q => getSapCategory(q.name) === cat.key);
+    const totalCount = certs.reduce((sum, c) => sum + c.employeeCount, 0);
+    return { ...cat, certs, totalCount, certCount: certs.length };
+  }).filter(cat => cat.certCount > 0);
+
+  // Get SAP certs for selected category
+  const selectedSapCerts = selectedSapCategory 
+    ? sapQualifications.filter(q => getSapCategory(q.name) === selectedSapCategory)
+    : [];
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -218,7 +262,7 @@ export default function QualificationsPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <div className="flex items-center gap-2">
             <span className="text-2xl">🏥</span>
@@ -234,6 +278,15 @@ export default function QualificationsPage() {
             <div>
               <p className="text-xs font-medium text-orange-600 dark:text-orange-400">Brandschutzhelfer</p>
               <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{totalFireSafety}</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 dark:border-blue-800 dark:from-blue-900/20 dark:to-indigo-900/20">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🔷</span>
+            <div>
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">SAP Zertifikate</p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{totalSapCertifications}</p>
             </div>
           </div>
         </div>
@@ -256,6 +309,107 @@ export default function QualificationsPage() {
           </div>
         </div>
       </div>
+
+      {/* SAP Certifications Dashboard */}
+      {showSapSection && sapQualifications.length > 0 && (
+        <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 p-6 dark:border-blue-800 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-violet-900/20">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-2xl text-white shadow-lg">
+                🔷
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">SAP Zertifizierungen</h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {totalSapCertifications} Zertifikate in {sapByCategory.length} Kategorien
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSapSection(false)}
+              className="rounded-lg p-2 text-zinc-400 hover:bg-white/50 hover:text-zinc-600 dark:hover:bg-zinc-700"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* SAP Category Cards */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {sapByCategory.map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => setSelectedSapCategory(selectedSapCategory === cat.key ? null : cat.key)}
+                className={`group relative overflow-hidden rounded-xl p-4 text-left transition-all duration-200 ${
+                  selectedSapCategory === cat.key
+                    ? "bg-gradient-to-br " + cat.color + " text-white shadow-lg scale-[1.02]"
+                    : "bg-white hover:shadow-md dark:bg-zinc-800"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl">{cat.icon}</span>
+                  <div className={`rounded-full px-2.5 py-1 text-sm font-bold ${
+                    selectedSapCategory === cat.key
+                      ? "bg-white/20 text-white"
+                      : "bg-gradient-to-r " + cat.color + " text-white"
+                  }`}>
+                    {cat.totalCount}
+                  </div>
+                </div>
+                <p className={`mt-2 font-semibold ${selectedSapCategory === cat.key ? "text-white" : "text-zinc-900 dark:text-white"}`}>
+                  {cat.label}
+                </p>
+                <p className={`text-xs ${selectedSapCategory === cat.key ? "text-white/80" : "text-zinc-500"}`}>
+                  {cat.certCount} Zertifikat{cat.certCount !== 1 ? "e" : ""}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          {/* Selected SAP Category Details */}
+          {selectedSapCategory && selectedSapCerts.length > 0 && (
+            <div className="mt-4 rounded-xl bg-white p-4 dark:bg-zinc-800">
+              <h3 className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white mb-3">
+                <span>{SAP_CATEGORIES.find(c => c.key === selectedSapCategory)?.icon}</span>
+                {SAP_CATEGORIES.find(c => c.key === selectedSapCategory)?.label} Zertifikate
+              </h3>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {selectedSapCerts.map((cert) => (
+                  <div
+                    key={cert.id}
+                    onClick={() => {
+                      setSelectedType("IT_CERTIFICATION");
+                      // Load employees with this specific qualification
+                    }}
+                    className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 p-3 cursor-pointer hover:border-blue-200 hover:bg-blue-50 dark:border-zinc-700 dark:bg-zinc-700/50 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-zinc-900 dark:text-white truncate">
+                        {cert.name.replace("SAP Certified Associate - ", "").replace("SAP Certified ", "")}
+                      </p>
+                    </div>
+                    <span className="ml-2 flex-shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                      {cert.employeeCount}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show SAP section button when hidden */}
+      {!showSapSection && sapQualifications.length > 0 && (
+        <button
+          onClick={() => setShowSapSection(true)}
+          className="w-full rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-4 text-center text-blue-600 hover:border-blue-300 hover:bg-blue-50 dark:border-blue-800 dark:bg-blue-900/10 dark:text-blue-400"
+        >
+          <span className="text-xl mr-2">🔷</span>
+          SAP Zertifizierungen anzeigen ({totalSapCertifications})
+        </button>
+      )}
 
       {/* Expiring Warnings */}
       {showExpiring && (expiringQuals.length > 0 || expiredQuals.length > 0) && (
