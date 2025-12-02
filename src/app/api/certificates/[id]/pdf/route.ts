@@ -26,14 +26,58 @@ const DEFAULT_CERT_SETTINGS: CertificateSettings = {
   companyIntro: "Die RealCore Consulting GmbH ist ein führendes Beratungsunternehmen im Bereich IT, mit einem besonderen Schwerpunkt auf der SAP-Technologie. Das Unternehmen unterstützt seine Kunden bei der Implementierung und Optimierung von SAP-Lösungen, um deren Geschäftsprozesse effizienter zu gestalten. Dabei legt RealCore besonderen Wert auf eine partnerschaftliche Zusammenarbeit und die Entwicklung maßgeschneiderter Lösungen, um den individuellen Anforderungen der Kunden gerecht zu werden. Ziel ist es, durch praxisorientierte Beratung und exzellente Expertise nachhaltige Erfolge und eine hohe Kundenzufriedenheit sicherzustellen.",
 };
 
+// Supported image types for react-pdf
+const SUPPORTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/gif"];
+
 // Helper to fetch image and convert to base64 for PDF embedding
 async function fetchImageAsBase64(url: string): Promise<string | null> {
+  if (!url || url.trim() === "") return null;
+  
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
+    console.log("Fetching logo from:", url);
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; PDFGenerator/1.0)",
+        "Accept": "image/png, image/jpeg, image/gif",
+      },
+    });
+    
+    console.log("Logo fetch response:", { status: response.status, ok: response.ok });
+    
+    if (!response.ok) {
+      console.error("Failed to fetch logo, status:", response.status);
+      return null;
+    }
+    
     const buffer = await response.arrayBuffer();
-    const contentType = response.headers.get("content-type") || "image/png";
+    if (buffer.byteLength === 0) {
+      console.error("Logo image is empty");
+      return null;
+    }
+    
+    // Determine content type from response or URL extension
+    let contentType = response.headers.get("content-type")?.split(";")[0]?.trim();
+    
+    // If content-type is missing or generic, try to determine from URL
+    if (!contentType || contentType === "application/octet-stream" || !contentType.startsWith("image/")) {
+      const ext = url.split(".").pop()?.toLowerCase()?.split("?")[0];
+      switch (ext) {
+        case "png": contentType = "image/png"; break;
+        case "jpg":
+        case "jpeg": contentType = "image/jpeg"; break;
+        case "gif": contentType = "image/gif"; break;
+        default: contentType = "image/png"; // Default to PNG
+      }
+    }
+    
+    // Only allow supported image types (react-pdf doesn't support SVG, WebP well)
+    if (!SUPPORTED_IMAGE_TYPES.includes(contentType)) {
+      console.error("Unsupported image type:", contentType);
+      return null;
+    }
+    
     const base64 = Buffer.from(buffer).toString("base64");
+    console.log("Logo converted to base64, content-type:", contentType, "size:", base64.length);
     return `data:${contentType};base64,${base64}`;
   } catch (error) {
     console.error("Failed to fetch logo image:", error);
@@ -275,7 +319,7 @@ function createPdfDocument(certificate: CertificateData): ReactElement<DocumentP
       React.createElement(
         View,
         { style: styles.letterhead },
-        settings.companyLogo ? React.createElement(Image, { style: styles.logo, src: settings.companyLogo }) : null,
+        settings.companyLogo && settings.companyLogo.startsWith("data:image/") ? React.createElement(Image, { style: styles.logo, src: settings.companyLogo }) : null,
         React.createElement(
           View,
           { style: styles.companyInfo },
