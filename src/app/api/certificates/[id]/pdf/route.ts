@@ -26,6 +26,21 @@ const DEFAULT_CERT_SETTINGS: CertificateSettings = {
   companyIntro: "Die RealCore Consulting GmbH ist ein führendes Beratungsunternehmen im Bereich IT, mit einem besonderen Schwerpunkt auf der SAP-Technologie. Das Unternehmen unterstützt seine Kunden bei der Implementierung und Optimierung von SAP-Lösungen, um deren Geschäftsprozesse effizienter zu gestalten. Dabei legt RealCore besonderen Wert auf eine partnerschaftliche Zusammenarbeit und die Entwicklung maßgeschneiderter Lösungen, um den individuellen Anforderungen der Kunden gerecht zu werden. Ziel ist es, durch praxisorientierte Beratung und exzellente Expertise nachhaltige Erfolge und eine hohe Kundenzufriedenheit sicherzustellen.",
 };
 
+// Helper to fetch image and convert to base64 for PDF embedding
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const buffer = await response.arrayBuffer();
+    const contentType = response.headers.get("content-type") || "image/png";
+    const base64 = Buffer.from(buffer).toString("base64");
+    return `data:${contentType};base64,${base64}`;
+  } catch (error) {
+    console.error("Failed to fetch logo image:", error);
+    return null;
+  }
+}
+
 // PDF Styles - Professional German work certificate layout
 const styles = StyleSheet.create({
   page: {
@@ -396,13 +411,18 @@ export async function GET(
       certCompanyLogo?: string;
       certCompanyIntro?: string;
     };
+    
+    // Fetch logo as base64 to avoid CORS issues in PDF generation
+    const logoUrl = certSettings?.certCompanyLogo || DEFAULT_CERT_SETTINGS.companyLogo;
+    const logoBase64 = logoUrl ? await fetchImageAsBase64(logoUrl) : null;
+    
     const certConfig: CertificateSettings = {
       companyName: certSettings?.certCompanyName || DEFAULT_CERT_SETTINGS.companyName,
       companyStreet: certSettings?.certCompanyStreet || DEFAULT_CERT_SETTINGS.companyStreet,
       companyCity: certSettings?.certCompanyCity || DEFAULT_CERT_SETTINGS.companyCity,
       companyPhone: certSettings?.certCompanyPhone || DEFAULT_CERT_SETTINGS.companyPhone,
       companyWebsite: certSettings?.certCompanyWebsite || DEFAULT_CERT_SETTINGS.companyWebsite,
-      companyLogo: certSettings?.certCompanyLogo || DEFAULT_CERT_SETTINGS.companyLogo,
+      companyLogo: logoBase64 || "", // Use base64 encoded logo
       companyIntro: certSettings?.certCompanyIntro || DEFAULT_CERT_SETTINGS.companyIntro,
     };
 
